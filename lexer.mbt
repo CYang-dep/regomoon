@@ -6,7 +6,8 @@
 /// the parser decide, for example, whether `if` introduces a rule body or
 /// whether `contains` is a rule-head operator.
 
-///| A token kind.
+///|
+/// A token kind.
 pub(all) enum TokenKind {
   TokIdent(String)
   TokNumber(Double)
@@ -39,14 +40,16 @@ pub(all) enum TokenKind {
   TokEof
 }
 
-///| A token with source position.
+///|
+/// A token with source position.
 pub(all) struct Token {
   kind : TokenKind
   line : Int
   column : Int
 }
 
-///| A short description of a token kind, for error messages.
+///|
+/// A short description of a token kind, for error messages.
 pub fn TokenKind::describe(self : TokenKind) -> String {
   match self {
     TokenKind::TokIdent(s) => "identifier `" + s + "`"
@@ -81,7 +84,8 @@ pub fn TokenKind::describe(self : TokenKind) -> String {
   }
 }
 
-///| Join strings with a separator.
+///|
+/// Join strings with a separator.
 pub fn join_strings(parts : Array[String], sep : String) -> String {
   let sb = StringBuilder::new()
   let mut i = 0
@@ -95,7 +99,8 @@ pub fn join_strings(parts : Array[String], sep : String) -> String {
   sb.to_string()
 }
 
-///| A compact, stable rendering of a token, useful for tests and debugging.
+///|
+/// A compact, stable rendering of a token, useful for tests and debugging.
 pub fn Token::render(self : Token) -> String {
   match self.kind {
     TokenKind::TokIdent(s) => "ident:" + s
@@ -130,7 +135,8 @@ pub fn Token::render(self : Token) -> String {
   }
 }
 
-///| Render a whole token stream, space separated.
+///|
+/// Render a whole token stream, space separated.
 pub fn render_tokens(tokens : Array[Token]) -> String {
   let parts : Array[String] = []
   for t in tokens {
@@ -139,7 +145,8 @@ pub fn render_tokens(tokens : Array[Token]) -> String {
   join_strings(parts, " ")
 }
 
-///| Mutable lexer state.
+///|
+/// Mutable lexer state.
 priv struct Lexer {
   chars : Array[Char]
   mut pos : Int
@@ -206,7 +213,8 @@ fn Lexer::next_is(self : Lexer, n : Int) -> Bool {
   }
 }
 
-///| Whether the character `offset` positions ahead of the cursor is a digit.
+///|
+/// Whether the character `offset` positions ahead of the cursor is a digit.
 fn Lexer::digit_at(self : Lexer, offset : Int) -> Bool {
   let i = self.pos + offset
   if i < self.chars.length() {
@@ -232,13 +240,14 @@ fn Lexer::advance(self : Lexer) -> Unit {
   }
 }
 
-///| Tokenize a Rego module.
+///|
+/// Tokenize a Rego module.
 pub fn tokenize(text : String) -> Result[Array[Token], RegoError] {
   let chars : Array[Char] = []
   for c in text {
     chars.push(c)
   }
-  let lexer : Lexer = { chars: chars, pos: 0, line: 1, column: 1 }
+  let lexer : Lexer = { chars, pos: 0, line: 1, column: 1 }
   lexer.run()
 }
 
@@ -252,7 +261,7 @@ fn Lexer::run(self : Lexer) -> Result[Array[Token], RegoError] {
     let column = self.column
     let code = self.peek_code()
     if code is None {
-      out.push({ kind: TokenKind::TokEof, line: line, column: column })
+      out.push({ kind: TokenKind::TokEof, line, column })
       going = false
     } else {
       let n = match code {
@@ -260,33 +269,26 @@ fn Lexer::run(self : Lexer) -> Result[Array[Token], RegoError] {
         None => -1
       }
       if is_ident_start(n) {
-        out.push({
-          kind: TokenKind::TokIdent(self.read_ident()),
-          line: line,
-          column: column,
-        })
+        out.push({ kind: TokenKind::TokIdent(self.read_ident()), line, column })
       } else if is_digit(n) {
         match self.read_number() {
           Err(e) => return Err(e)
-          Ok(d) =>
-            out.push({ kind: TokenKind::TokNumber(d), line: line, column: column })
+          Ok(d) => out.push({ kind: TokenKind::TokNumber(d), line, column })
         }
       } else if n == 34 {
         match self.read_string() {
           Err(e) => return Err(e)
-          Ok(s) =>
-            out.push({ kind: TokenKind::TokString(s), line: line, column: column })
+          Ok(s) => out.push({ kind: TokenKind::TokString(s), line, column })
         }
       } else if n == 96 {
         match self.read_raw_string() {
           Err(e) => return Err(e)
-          Ok(s) =>
-            out.push({ kind: TokenKind::TokString(s), line: line, column: column })
+          Ok(s) => out.push({ kind: TokenKind::TokString(s), line, column })
         }
       } else {
         match self.read_symbol() {
           Err(e) => return Err(e)
-          Ok(kind) => out.push({ kind: kind, line: line, column: column })
+          Ok(kind) => out.push({ kind, line, column })
         }
       }
     }
@@ -307,7 +309,9 @@ fn Lexer::skip_trivia(self : Lexer) -> Unit {
           self.advance()
         }
       }
-    } else if self.current_is(32) || self.current_is(9) || self.current_is(10) ||
+    } else if self.current_is(32) ||
+      self.current_is(9) ||
+      self.current_is(10) ||
       self.current_is(13) {
       self.advance()
     } else {
@@ -354,7 +358,8 @@ fn Lexer::read_ident(self : Lexer) -> String {
   sb.to_string()
 }
 
-///| Read a numeric literal.
+///|
+/// Read a numeric literal.
 ///
 /// A `.` is only consumed when a digit follows, so `a[0].b` lexes as
 /// `a`, `[`, `0`, `]`, `.`, `b` rather than swallowing the field access.
@@ -445,7 +450,8 @@ fn Lexer::read_string(self : Lexer) -> Result[String, RegoError] {
   Err(self.err("unterminated string literal"))
 }
 
-///| A backtick-delimited raw string: no escapes, newlines allowed.
+///|
+/// A backtick-delimited raw string: no escapes, newlines allowed.
 fn Lexer::read_raw_string(self : Lexer) -> Result[String, RegoError] {
   self.advance()
   let sb = StringBuilder::new()

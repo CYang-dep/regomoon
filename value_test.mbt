@@ -50,7 +50,9 @@ test "value: type ordering follows OPA" {
 test "value: structural equality" {
   assert_true(Value::Number(1.0).equals(Value::Number(1.0)))
   assert_false(Value::Number(1.0).equals(Value::String("1")))
-  assert_true(make_set([Value::Number(1.0)]).equals(make_set([Value::Number(1.0)])))
+  assert_true(
+    make_set([Value::Number(1.0)]).equals(make_set([Value::Number(1.0)])),
+  )
   assert_false(
     make_set([Value::Number(1.0)]).equals(Value::Array([Value::Number(1.0)])),
   )
@@ -65,8 +67,12 @@ test "value: field access and set membership" {
   }
   assert_eq(got, "\"alice\"")
   assert_true(o.get_field("missing") is None)
-  assert_true(make_set([Value::String("admin")]).set_contains(Value::String("admin")))
-  assert_false(make_set([Value::String("admin")]).set_contains(Value::String("dev")))
+  assert_true(
+    make_set([Value::String("admin")]).set_contains(Value::String("admin")),
+  )
+  assert_false(
+    make_set([Value::String("admin")]).set_contains(Value::String("dev")),
+  )
 }
 
 ///|

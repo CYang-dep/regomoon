@@ -12,7 +12,8 @@
 /// | 5 | `+`, `-` |
 /// | 6 | `*`, `/`, `%` |
 
-///| Punctuation classes, used so the parser can test for a symbol without
+///|
+/// Punctuation classes, used so the parser can test for a symbol without
 /// having to match a payload-carrying [TokenKind] every time.
 priv enum Punct {
   LParen
@@ -85,23 +86,25 @@ priv struct Parser {
   mut pos : Int
 }
 
-///| Parse a complete Rego module.
+///|
+/// Parse a complete Rego module.
 pub fn parse_module(text : String) -> Result[Module, RegoError] {
   match tokenize(text) {
     Err(e) => Err(e)
     Ok(tokens) => {
-      let parser : Parser = { tokens: tokens, pos: 0 }
+      let parser : Parser = { tokens, pos: 0 }
       parser.parse_module()
     }
   }
 }
 
-///| Parse a standalone expression, useful for testing and for `input`-only use.
+///|
+/// Parse a standalone expression, useful for testing and for `input`-only use.
 pub fn parse_expression(text : String) -> Result[Expr, RegoError] {
   match tokenize(text) {
     Err(e) => Err(e)
     Ok(tokens) => {
-      let parser : Parser = { tokens: tokens, pos: 0 }
+      let parser : Parser = { tokens, pos: 0 }
       let expr = match parser.parse_expr(0) {
         Err(e) => return Err(e)
         Ok(v) => v
@@ -150,24 +153,26 @@ fn Parser::advance(self : Parser) -> Unit {
 }
 
 ///|
-fn Parser::expect(self : Parser, p : Punct, what : String) -> Result[Unit, RegoError] {
+fn Parser::expect(
+  self : Parser,
+  p : Punct,
+  what : String,
+) -> Result[Unit, RegoError] {
   if self.at(p) {
     self.advance()
     Ok(())
   } else {
     Err(
-      self.err(
-        "expected " +
-        what +
-        " but found " +
-        self.cur().kind.describe(),
-      ),
+      self.err("expected " + what + " but found " + self.cur().kind.describe()),
     )
   }
 }
 
 ///|
-fn Parser::expect_ident(self : Parser, what : String) -> Result[String, RegoError] {
+fn Parser::expect_ident(
+  self : Parser,
+  what : String,
+) -> Result[String, RegoError] {
   match self.cur().kind {
     TokenKind::TokIdent(s) => {
       self.advance()
@@ -210,7 +215,7 @@ fn Parser::parse_module(self : Parser) -> Result[Module, RegoError] {
       Ok(r) => rules.push(r)
     }
   }
-  Ok({ package_path: package_path, imports: imports, rules: rules })
+  Ok({ package_path, imports, rules })
 }
 
 ///|
@@ -248,7 +253,7 @@ fn Parser::parse_import(self : Parser) -> Result[ImportDecl, RegoError] {
   } else {
     path_last(path)
   }
-  Ok({ path: path, local_name: local_name })
+  Ok({ path, local_name })
 }
 
 // ---------------------------------------------------------------------------
@@ -352,19 +357,20 @@ fn Parser::parse_rule(self : Parser) -> Result[Rule, RegoError] {
     Ok(b) => b
   }
   Ok({
-    name: name,
-    args: args,
-    key: key,
-    value: value,
-    kind: kind,
-    body: body,
-    is_default: is_default,
+    name,
+    args,
+    key,
+    value,
+    kind,
+    body,
+    is_default,
     line: start.line,
     column: start.column,
   })
 }
 
-///| Parse a rule body. Rego v1 introduces it with `if`; the pre-v1 spelling
+///|
+/// Parse a rule body. Rego v1 introduces it with `if`; the pre-v1 spelling
 /// is a bare `{` block. A rule with neither has an empty body.
 fn Parser::parse_optional_body(self : Parser) -> Result[Array[Stmt], RegoError] {
   if self.at_ident("if") {
@@ -403,7 +409,10 @@ fn Parser::parse_optional_body(self : Parser) -> Result[Array[Stmt], RegoError] 
 // ---------------------------------------------------------------------------
 
 ///|
-fn Parser::parse_body(self : Parser, closer : Punct) -> Result[Array[Stmt], RegoError] {
+fn Parser::parse_body(
+  self : Parser,
+  closer : Punct,
+) -> Result[Array[Stmt], RegoError] {
   let stmts : Array[Stmt] = []
   while !self.at(closer) && !self.at(Punct::Eof) {
     let before = self.pos
@@ -502,7 +511,8 @@ fn Parser::parse_stmt(self : Parser) -> Result[Stmt, RegoError] {
   self.finish_stmt(Stmt::Test(expr))
 }
 
-///| Reject the one statement modifier this engine does not implement, so that
+///|
+/// Reject the one statement modifier this engine does not implement, so that
 /// the failure is a clear compile error rather than a confusing parse error.
 fn Parser::finish_stmt(self : Parser, stmt : Stmt) -> Result[Stmt, RegoError] {
   if self.at_ident("with") {
@@ -522,7 +532,8 @@ fn Parser::finish_stmt(self : Parser, stmt : Stmt) -> Result[Stmt, RegoError] {
 // Expressions
 // ---------------------------------------------------------------------------
 
-///| The binary operator at the cursor, if any, with its precedence level.
+///|
+/// The binary operator at the cursor, if any, with its precedence level.
 fn Parser::binary_op(self : Parser) -> (String, Int)? {
   if self.at_ident("in") {
     return Some(("in", 4))
@@ -691,16 +702,16 @@ fn Parser::parse_primary(self : Parser) -> Result[Expr, RegoError] {
     TokenKind::TokLBracket => self.parse_bracket_expr()
     TokenKind::TokLBrace => self.parse_brace_expr()
     _ =>
-      Err(
-        self.err(
-          "expected an expression but found " + token.kind.describe(),
-        ),
-      )
+      Err(self.err("expected an expression but found " + token.kind.describe()))
   }
 }
 
-///| Parse a comma-separated expression list up to (but not consuming) `closer`.
-fn Parser::parse_expr_list(self : Parser, closer : Punct) -> Result[Array[Expr], RegoError] {
+///|
+/// Parse a comma-separated expression list up to (but not consuming) `closer`.
+fn Parser::parse_expr_list(
+  self : Parser,
+  closer : Punct,
+) -> Result[Array[Expr], RegoError] {
   let items : Array[Expr] = []
   if self.at(closer) {
     return Ok(items)
@@ -721,7 +732,8 @@ fn Parser::parse_expr_list(self : Parser, closer : Punct) -> Result[Array[Expr],
   Ok(items)
 }
 
-///| Parse an array literal, array comprehension, or array-indexed set.
+///|
+/// Parse an array literal, array comprehension, or array-indexed set.
 fn Parser::parse_bracket_expr(self : Parser) -> Result[Expr, RegoError] {
   self.advance()
   if self.at(Punct::RBracket) {
@@ -760,7 +772,8 @@ fn Parser::parse_bracket_expr(self : Parser) -> Result[Expr, RegoError] {
   Ok(Expr::EArray(items))
 }
 
-///| Parse a set literal, object literal, or one of the two comprehensions.
+///|
+/// Parse a set literal, object literal, or one of the two comprehensions.
 ///
 /// An empty `{}` is an empty **object**, matching Rego; the empty set is
 /// written `set()`.

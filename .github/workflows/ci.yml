@@ -1,0 +1,29 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: hustcer/setup-moonbit@v1.22
+      - name: Toolchain
+        run: moon version --all
+      - name: Resolve dependencies
+        run: moon update
+      - name: Format
+        run: moon fmt --check
+      - name: Public API
+        run: moon info
+      - name: Strict check (wasm, wasm-gc, js, native)
+        run: moon check --target all --deny-warn
+      - name: Strict tests (wasm, wasm-gc, js, native)
+        run: moon test --target all --deny-warn
+      - name: Package manifest
+        run: moon package --list

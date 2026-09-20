@@ -15,11 +15,13 @@
 /// rather than an implicit iteration; this is the one place where the engine is
 /// deliberately stricter than OPA. See the README.
 
-///| The maximum rule-reference recursion depth before the engine gives up.
+///|
+/// The maximum rule-reference recursion depth before the engine gives up.
 /// Guards against cyclic definitions such as `p := p`.
 const MAX_DEPTH : Int = 100
 
-///| Variable bindings for one evaluation branch.
+///|
+/// Variable bindings for one evaluation branch.
 ///
 /// A small association list is used instead of a hash map because scopes are
 /// tiny, frequently copied during search, and need deterministic iteration.
@@ -67,7 +69,8 @@ fn Scope::set(self : Scope, name : String, value : Value) -> Unit {
   }
 }
 
-///| Everything an evaluation needs besides the expression itself.
+///|
+/// Everything an evaluation needs besides the expression itself.
 priv struct Env {
   md : Module
   /// The root `data` document, with package results layered on top on demand.
@@ -79,7 +82,8 @@ priv struct Env {
 // Small value helpers
 // ---------------------------------------------------------------------------
 
-///| The value of `x in collection`.
+///|
+/// The value of `x in collection`.
 fn contains_value(collection : Value, item : Value) -> Bool? {
   match collection {
     Value::Array(items) => {
@@ -100,53 +104,58 @@ fn contains_value(collection : Value, item : Value) -> Bool? {
       }
       Some(hit)
     }
-    Value::Object(pairs) => match item {
-      Value::String(key) => {
-        let mut hit = false
-        for kv in pairs {
-          if kv.0 == key {
-            hit = true
+    Value::Object(pairs) =>
+      match item {
+        Value::String(key) => {
+          let mut hit = false
+          for kv in pairs {
+            if kv.0 == key {
+              hit = true
+            }
           }
+          Some(hit)
         }
-        Some(hit)
+        _ => None
       }
-      _ => None
-    }
     _ => None
   }
 }
 
-///| Look up a field on a value, returning `None` when absent or not an object.
+///|
+/// Look up a field on a value, returning `None` when absent or not an object.
 fn index_value(base : Value, key : Value) -> Value? {
   match base {
-    Value::Object(pairs) => match key {
-      Value::String(name) => {
-        let mut found : Value? = None
-        for kv in pairs {
-          if kv.0 == name {
-            found = Some(kv.1)
+    Value::Object(pairs) =>
+      match key {
+        Value::String(name) => {
+          let mut found : Value? = None
+          for kv in pairs {
+            if kv.0 == name {
+              found = Some(kv.1)
+            }
+          }
+          found
+        }
+        _ => None
+      }
+    Value::Array(items) =>
+      match key {
+        Value::Number(d) => {
+          let i = d.to_int()
+          if i >= 0 && i < items.length() {
+            Some(items[i])
+          } else {
+            None
           }
         }
-        found
+        _ => None
       }
-      _ => None
-    }
-    Value::Array(items) => match key {
-      Value::Number(d) => {
-        let i = d.to_int()
-        if i >= 0 && i < items.length() {
-          Some(items[i])
-        } else {
-          None
-        }
-      }
-      _ => None
-    }
     _ => None
   }
 }
 
-///| Interpret an expression as a plain dotted identifier path, if it is one.
+///|
+/// Interpret an expression as a plain dotted identifier path, if it is one.
 /// `data.a.b`, `input.x.y` and bare names all qualify; anything with an index,
 /// call or literal does not.
 fn flatten_path(e : Expr) -> Array[String]? {
@@ -168,7 +177,8 @@ fn flatten_path(e : Expr) -> Array[String]? {
   }
 }
 
-///| Walk a path of string keys into a value.
+///|
+/// Walk a path of string keys into a value.
 fn walk_path(base : Value, segments : Array[String]) -> Value? {
   let mut current = base
   for segment in segments {
@@ -189,7 +199,7 @@ fn eval_expr(
   env : Env,
   scope : Scope,
   depth : Int,
-  e : Expr
+  e : Expr,
 ) -> Result[Value?, RegoError] {
   match e {
     Expr::ENull => Ok(Some(Value::Null))
@@ -249,7 +259,7 @@ fn eval_expr(
       }
       Ok(Some(make_object(out)))
     }
-    Expr::EVar(_) | Expr::EField(_, _) => {
+    Expr::EVar(_) | Expr::EField(_, _) =>
       match flatten_path(e) {
         Some(path) => eval_path(env, scope, depth, path)
         None =>
@@ -267,7 +277,6 @@ fn eval_expr(
             _ => Ok(None)
           }
       }
-    }
     Expr::EIndex(base, index) => {
       let b = match eval_expr(env, scope, depth, base) {
         Err(err) => return Err(err)
@@ -382,7 +391,7 @@ fn eval_path(
   env : Env,
   scope : Scope,
   depth : Int,
-  path : Array[String]
+  path : Array[String],
 ) -> Result[Value?, RegoError] {
   if path.length() == 0 {
     return Ok(None)
@@ -446,11 +455,12 @@ fn walk_path_opt(value : Value?, segments : Array[String]) -> Value? {
   }
 }
 
-///| Resolve a path below `data`, preferring this module's own rules.
+///|
+/// Resolve a path below `data`, preferring this module's own rules.
 fn resolve_data_path(
   env : Env,
   depth : Int,
-  segments : Array[String]
+  segments : Array[String],
 ) -> Result[Value?, RegoError] {
   let pkg = env.md.package_path
   if segments.length() > pkg.length() {
@@ -489,7 +499,8 @@ fn is_rule_name(md : Module, name : String) -> Bool {
   found
 }
 
-///| Evaluate a binary operator over two defined values.
+///|
+/// Evaluate a binary operator over two defined values.
 fn eval_binary(op : String, l : Value, r : Value) -> Result[Value?, RegoError] {
   if op == "==" {
     return Ok(Some(Value::Bool(l.equals(r))))
@@ -528,8 +539,10 @@ fn eval_binary(op : String, l : Value, r : Value) -> Result[Value?, RegoError] {
   }
   if op == "+" {
     match (l, r) {
-      (Value::Number(a), Value::Number(b)) => return Ok(Some(Value::Number(a + b)))
-      (Value::String(a), Value::String(b)) => return Ok(Some(Value::String(a + b)))
+      (Value::Number(a), Value::Number(b)) =>
+        return Ok(Some(Value::Number(a + b)))
+      (Value::String(a), Value::String(b)) =>
+        return Ok(Some(Value::String(a + b)))
       (Value::Set(a), Value::Set(b)) => {
         let merged : Array[Value] = []
         for v in a {
@@ -561,7 +574,8 @@ fn eval_binary(op : String, l : Value, r : Value) -> Result[Value?, RegoError] {
   }
   if op == "-" {
     match (l, r) {
-      (Value::Number(a), Value::Number(b)) => return Ok(Some(Value::Number(a - b)))
+      (Value::Number(a), Value::Number(b)) =>
+        return Ok(Some(Value::Number(a - b)))
       (Value::Set(a), Value::Set(_)) => {
         let out : Array[Value] = []
         for v in a {
@@ -644,7 +658,10 @@ fn eval_binary(op : String, l : Value, r : Value) -> Result[Value?, RegoError] {
         return Ok(Some(Value::Number(a / b)))
       }
       Err(
-        RegoError::make(RegoErrorKind::TypeError, "unknown operator `" + op + "`"),
+        RegoError::make(
+          RegoErrorKind::TypeError,
+          "unknown operator `" + op + "`",
+        ),
       )
     }
     _ =>
@@ -672,7 +689,7 @@ fn eval_call(
   scope : Scope,
   depth : Int,
   name : String,
-  args : Array[Expr]
+  args : Array[Expr],
 ) -> Result[Value?, RegoError] {
   let values : Array[Value] = []
   for a in args {
@@ -701,7 +718,7 @@ fn eval_rule_call(
   env : Env,
   depth : Int,
   name : String,
-  args : Array[Value]
+  args : Array[Value],
 ) -> Result[Value?, RegoError] {
   let clauses : Array[Rule] = []
   for r in env.md.rules {
@@ -762,12 +779,11 @@ fn eval_rule_call(
       }
       Ok(Some(make_object(pairs)))
     }
-    RuleKind::CompleteRule => {
+    RuleKind::CompleteRule =>
       match single_value("rule `" + name + "`", values) {
         Err(e) => Err(e)
         Ok(v) => Ok(v)
       }
-    }
   }
 }
 
@@ -784,9 +800,13 @@ fn clause_kind(clauses : Array[Rule]) -> RuleKind {
   }
 }
 
-///| Collapse the values produced by a complete rule: `None` when there are no
+///|
+/// Collapse the values produced by a complete rule: `None` when there are no
 /// results, the value when all results agree, and a conflict error otherwise.
-fn single_value(what : String, values : Array[Value]) -> Result[Value?, RegoError] {
+fn single_value(
+  what : String,
+  values : Array[Value],
+) -> Result[Value?, RegoError] {
   if values.length() == 0 {
     return Ok(None)
   }
@@ -796,8 +816,11 @@ fn single_value(what : String, values : Array[Value]) -> Result[Value?, RegoErro
       return Err(
         RegoError::make(
           RegoErrorKind::ConflictError,
-          what + " produced conflicting values " + first.to_rego_string() +
-          " and " + v.to_rego_string(),
+          what +
+          " produced conflicting values " +
+          first.to_rego_string() +
+          " and " +
+          v.to_rego_string(),
         ),
       )
     }
@@ -810,7 +833,7 @@ fn rule_head_value(
   env : Env,
   depth : Int,
   rule : Rule,
-  scope : Scope
+  scope : Scope,
 ) -> Result[Value?, RegoError] {
   match rule.value {
     None => Ok(Some(Value::Bool(true)))
@@ -823,7 +846,7 @@ fn rule_key_value(
   env : Env,
   depth : Int,
   rule : Rule,
-  scope : Scope
+  scope : Scope,
 ) -> Result[Value?, RegoError] {
   match rule.key {
     None => Ok(None)
@@ -831,18 +854,21 @@ fn rule_key_value(
   }
 }
 
-///| Evaluate every rule with the given name, applying `default` rules only
+///|
+/// Evaluate every rule with the given name, applying `default` rules only
 /// when no other clause produces a value.
 fn eval_rule_group(
   env : Env,
   depth : Int,
-  name : String
+  name : String,
 ) -> Result[Value?, RegoError] {
   if depth > MAX_DEPTH {
     return Err(
       RegoError::make(
         RegoErrorKind::SafetyError,
-        "rule `" + name + "` exceeded the recursion limit of " +
+        "rule `" +
+        name +
+        "` exceeded the recursion limit of " +
         MAX_DEPTH.to_string(),
       ),
     )
@@ -866,7 +892,9 @@ fn eval_rule_group(
         return Err(
           RegoError::make(
             RegoErrorKind::CompileError,
-            "rule `" + name + "` mixes complete, partial set and partial object clauses",
+            "rule `" +
+            name +
+            "` mixes complete, partial set and partial object clauses",
           ),
         )
       }
@@ -875,7 +903,8 @@ fn eval_rule_group(
     let scopes : Array[Scope] = []
     let owners : Array[Rule] = []
     for clause in clauses {
-      let start = match eval_body(env, depth + 1, clause.body, 0, Scope::empty()) {
+      let start = match
+        eval_body(env, depth + 1, clause.body, 0, Scope::empty()) {
         Err(err) => return Err(err)
         Ok(s) => s
       }
@@ -967,14 +996,15 @@ fn eval_rule_group(
 // Bodies
 // ---------------------------------------------------------------------------
 
-///| Evaluate `stmts[start..]`, returning every binding environment that
+///|
+/// Evaluate `stmts[start..]`, returning every binding environment that
 /// satisfies all of them.
 fn eval_body(
   env : Env,
   depth : Int,
   stmts : Array[Stmt],
   start : Int,
-  scope : Scope
+  scope : Scope,
 ) -> Result[Array[Scope], RegoError] {
   if start >= stmts.length() {
     return Ok([scope])
@@ -1069,14 +1099,15 @@ fn eval_body(
   }
 }
 
-///| Evaluate a `Test` statement, handling binding forms.
+///|
+/// Evaluate a `Test` statement, handling binding forms.
 fn eval_test(
   env : Env,
   depth : Int,
   stmts : Array[Stmt],
   start : Int,
   scope : Scope,
-  expr : Expr
+  expr : Expr,
 ) -> Result[Array[Scope], RegoError] {
   let as_binary = match expr {
     Expr::EBinary(op, left, right) => Some((op, left, right))
@@ -1090,7 +1121,7 @@ fn eval_test(
       let right = parts.2
       if op == ":=" || op == "=" {
         match left {
-          Expr::EVar(name) => {
+          Expr::EVar(name) =>
             if !scope.is_bound(name) {
               let v = match eval_expr(env, scope, depth, right) {
                 Err(err) => return Err(err)
@@ -1111,14 +1142,13 @@ fn eval_test(
                 }
               }
             }
-          }
           _ => ()
         }
         return test_pair(env, depth, stmts, start, scope, left, right)
       }
       if op == "in" {
         match left {
-          Expr::EVar(name) => {
+          Expr::EVar(name) =>
             if !scope.is_bound(name) {
               let v = match eval_expr(env, scope, depth, right) {
                 Err(err) => return Err(err)
@@ -1132,7 +1162,8 @@ fn eval_test(
               for entry in entries {
                 let next = scope.clone()
                 next.set(name, entry.1)
-                let branch = match eval_body(env, depth, stmts, start + 1, next) {
+                let branch = match
+                  eval_body(env, depth, stmts, start + 1, next) {
                   Err(err) => return Err(err)
                   Ok(s) => s
                 }
@@ -1142,7 +1173,6 @@ fn eval_test(
               }
               return Ok(results)
             }
-          }
           _ => ()
         }
       }
@@ -1151,7 +1181,8 @@ fn eval_test(
   }
 }
 
-///| Test two expressions for equality of their evaluated values.
+///|
+/// Test two expressions for equality of their evaluated values.
 fn test_pair(
   env : Env,
   depth : Int,
@@ -1159,7 +1190,7 @@ fn test_pair(
   start : Int,
   scope : Scope,
   left : Expr,
-  right : Expr
+  right : Expr,
 ) -> Result[Array[Scope], RegoError] {
   let lv = match eval_expr(env, scope, depth, left) {
     Err(err) => return Err(err)
@@ -1180,14 +1211,15 @@ fn test_pair(
   }
 }
 
-///| The fallback case: a body expression that must evaluate to `true`.
+///|
+/// The fallback case: a body expression that must evaluate to `true`.
 fn fallthrough_test(
   env : Env,
   depth : Int,
   stmts : Array[Stmt],
   start : Int,
   scope : Scope,
-  expr : Expr
+  expr : Expr,
 ) -> Result[Array[Scope], RegoError] {
   let v = match eval_expr(env, scope, depth, expr) {
     Err(err) => return Err(err)
@@ -1207,24 +1239,22 @@ fn fallthrough_test(
   }
 }
 
+///|
 fn enumerate(collection : Value) -> Array[(Value, Value)] {
   let out : Array[(Value, Value)] = []
   match collection {
-    Value::Array(items) => {
+    Value::Array(items) =>
       for i = 0; i < items.length(); i = i + 1 {
         out.push((Value::Number(i.to_double()), items[i]))
       }
-    }
-    Value::Set(items) => {
+    Value::Set(items) =>
       for item in items {
         out.push((item, item))
       }
-    }
-    Value::Object(pairs) => {
+    Value::Object(pairs) =>
       for kv in pairs {
         out.push((Value::String(kv.0), kv.1))
       }
-    }
     _ => ()
   }
   out

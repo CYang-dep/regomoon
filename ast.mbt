@@ -5,13 +5,15 @@
 /// The pre-v1 spelling without `if` is also accepted when a `{` follows the
 /// rule head, so most existing policy text parses unchanged.
 
-///| One element of a reference path, as produced by `.name` or `[expr]`.
+///|
+/// One element of a reference path, as produced by `.name` or `[expr]`.
 pub(all) enum RefArg {
   Field(String)
   Index(Expr)
 }
 
-///| A Rego expression.
+///|
+/// A Rego expression.
 pub(all) enum Expr {
   ENull
   EBool(Bool)
@@ -31,7 +33,8 @@ pub(all) enum Expr {
   EBinary(String, Expr, Expr)
 }
 
-///| A statement inside a rule body, comprehension body, or `every` body.
+///|
+/// A statement inside a rule body, comprehension body, or `every` body.
 pub(all) enum Stmt {
   /// A bare expression: a test, a unification, or an assignment.
   Test(Expr)
@@ -45,7 +48,8 @@ pub(all) enum Stmt {
   Every(Array[String], Expr, Array[Stmt])
 }
 
-///| The shape of a rule head.
+///|
+/// The shape of a rule head.
 pub(all) enum RuleKind {
   /// `allow if { ... }` or `allow := value if { ... }`
   CompleteRule
@@ -55,7 +59,8 @@ pub(all) enum RuleKind {
   PartialObjectRule
 } derive(Eq)
 
-///| A rule definition.
+///|
+/// A rule definition.
 pub(all) struct Rule {
   /// The rule's name, e.g. `allow`. Dotted head names are not supported.
   name : String
@@ -73,21 +78,24 @@ pub(all) struct Rule {
   column : Int
 }
 
-///| An `import` declaration.
+///|
+/// An `import` declaration.
 pub(all) struct ImportDecl {
   path : Array[String]
   /// The local name the import is bound to.
   local_name : String
 }
 
-///| A parsed Rego module.
+///|
+/// A parsed Rego module.
 pub(all) struct Module {
   package_path : Array[String]
   imports : Array[ImportDecl]
   rules : Array[Rule]
 }
 
-///| The last segment of a path, used as the default import alias.
+///|
+/// The last segment of a path, used as the default import alias.
 pub fn path_last(path : Array[String]) -> String {
   if path.length() == 0 {
     ""
@@ -96,7 +104,8 @@ pub fn path_last(path : Array[String]) -> String {
   }
 }
 
-///| Render a dotted path.
+///|
+/// Render a dotted path.
 pub fn render_path(path : Array[String]) -> String {
   join_strings(path, ".")
 }
@@ -105,7 +114,8 @@ pub fn render_path(path : Array[String]) -> String {
 // Rendering, used by tests and by `regomoon`'s error messages
 // ---------------------------------------------------------------------------
 
-///| Render an expression back to a compact Rego-like form.
+///|
+/// Render an expression back to a compact Rego-like form.
 pub fn Expr::render(self : Expr) -> String {
   match self {
     Expr::ENull => "null"
@@ -127,7 +137,13 @@ pub fn Expr::render(self : Expr) -> String {
     Expr::ESetComprehension(head, body) =>
       "{" + head.render() + " | " + render_stmts(body) + "}"
     Expr::EObjectComprehension(key, value, body) =>
-      "{" + key.render() + ": " + value.render() + " | " + render_stmts(body) + "}"
+      "{" +
+      key.render() +
+      ": " +
+      value.render() +
+      " | " +
+      render_stmts(body) +
+      "}"
     Expr::ECall(name, args) => name + "(" + render_exprs(args) + ")"
     Expr::EField(base, name) => base.render() + "." + name
     Expr::EIndex(base, index) => base.render() + "[" + index.render() + "]"
@@ -146,7 +162,8 @@ fn render_exprs(items : Array[Expr]) -> String {
   join_strings(parts, ", ")
 }
 
-///| Render a statement list, as it would appear in a rule body.
+///|
+/// Render a statement list, as it would appear in a rule body.
 pub fn render_stmts(stmts : Array[Stmt]) -> String {
   let parts : Array[String] = []
   for s in stmts {
@@ -155,7 +172,8 @@ pub fn render_stmts(stmts : Array[Stmt]) -> String {
   join_strings(parts, "; ")
 }
 
-///| Render a statement.
+///|
+/// Render a statement.
 pub fn Stmt::render(self : Stmt) -> String {
   match self {
     Stmt::Test(e) => e.render()
@@ -174,7 +192,8 @@ pub fn Stmt::render(self : Stmt) -> String {
   }
 }
 
-///| Render a rule head and body.
+///|
+/// Render a rule head and body.
 pub fn Rule::render(self : Rule) -> String {
   let base = if self.args.length() == 0 {
     self.name

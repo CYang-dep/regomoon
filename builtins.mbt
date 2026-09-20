@@ -4,7 +4,8 @@
 /// lets the evaluator fall back to user-defined rules; a known name with the
 /// wrong argument count is an arity error.
 
-///| The number of arguments a builtin takes, or `None` if it is not a builtin.
+///|
+/// The number of arguments a builtin takes, or `None` if it is not a builtin.
 pub fn builtin_arity(name : String) -> Int? {
   match name {
     "count" => Some(1)
@@ -57,7 +58,8 @@ pub fn builtin_arity(name : String) -> Int? {
   }
 }
 
-///| Whether `name` refers to a builtin.
+///|
+/// Whether `name` refers to a builtin.
 pub fn is_builtin(name : String) -> Bool {
   builtin_arity(name) is Some(_)
 }
@@ -67,7 +69,12 @@ pub fn is_builtin(name : String) -> Bool {
 // ---------------------------------------------------------------------------
 
 ///|
-fn type_error(name : String, arg_index : Int, expected : String, got : Value) -> RegoError {
+fn type_error(
+  name : String,
+  arg_index : Int,
+  expected : String,
+  got : Value,
+) -> RegoError {
   RegoError::make(
     RegoErrorKind::TypeError,
     "builtin `" +
@@ -82,7 +89,11 @@ fn type_error(name : String, arg_index : Int, expected : String, got : Value) ->
 }
 
 ///|
-fn want_number(name : String, args : Array[Value], i : Int) -> Result[Double, RegoError] {
+fn want_number(
+  name : String,
+  args : Array[Value],
+  i : Int,
+) -> Result[Double, RegoError] {
   match args[i] {
     Value::Number(d) => Ok(d)
     other => Err(type_error(name, i, "a number", other))
@@ -90,15 +101,24 @@ fn want_number(name : String, args : Array[Value], i : Int) -> Result[Double, Re
 }
 
 ///|
-fn want_string(name : String, args : Array[Value], i : Int) -> Result[String, RegoError] {
+fn want_string(
+  name : String,
+  args : Array[Value],
+  i : Int,
+) -> Result[String, RegoError] {
   match args[i] {
     Value::String(s) => Ok(s)
     other => Err(type_error(name, i, "a string", other))
   }
 }
 
-///| The elements of an array or set.
-fn want_items(name : String, args : Array[Value], i : Int) -> Result[Array[Value], RegoError] {
+///|
+/// The elements of an array or set.
+fn want_items(
+  name : String,
+  args : Array[Value],
+  i : Int,
+) -> Result[Array[Value], RegoError] {
   match args[i] {
     Value::Array(items) => Ok(items)
     Value::Set(items) => Ok(items)
@@ -110,7 +130,7 @@ fn want_items(name : String, args : Array[Value], i : Int) -> Result[Array[Value
 fn want_object(
   name : String,
   args : Array[Value],
-  i : Int
+  i : Int,
 ) -> Result[Array[(String, Value)], RegoError] {
   match args[i] {
     Value::Object(pairs) => Ok(pairs)
@@ -119,7 +139,10 @@ fn want_object(
 }
 
 ///|
-fn as_number_list(name : String, items : Array[Value]) -> Result[Array[Double], RegoError] {
+fn as_number_list(
+  name : String,
+  items : Array[Value],
+) -> Result[Array[Double], RegoError] {
   let out : Array[Double] = []
   for v in items {
     match v {
@@ -128,10 +151,7 @@ fn as_number_list(name : String, items : Array[Value]) -> Result[Array[Double], 
         return Err(
           RegoError::make(
             RegoErrorKind::TypeError,
-            "builtin `" +
-            name +
-            "` requires numbers, got " +
-            other.type_name(),
+            "builtin `" + name + "` requires numbers, got " + other.type_name(),
           ),
         )
     }
@@ -139,7 +159,8 @@ fn as_number_list(name : String, items : Array[Value]) -> Result[Array[Double], 
   Ok(out)
 }
 
-///| Split a string into its Unicode code points.
+///|
+/// Split a string into its Unicode code points.
 fn chars_of(s : String) -> Array[Char] {
   let out : Array[Char] = []
   for c in s {
@@ -152,10 +173,11 @@ fn chars_of(s : String) -> Array[Char] {
 // Dispatch
 // ---------------------------------------------------------------------------
 
-///| Evaluate a builtin call. Returns `None` when `name` is not a builtin.
+///|
+/// Evaluate a builtin call. Returns `None` when `name` is not a builtin.
 pub fn call_builtin(
   name : String,
-  args : Array[Value]
+  args : Array[Value],
 ) -> Result[Value, RegoError]? {
   let arity = match builtin_arity(name) {
     None => return None
@@ -188,7 +210,8 @@ fn eval_builtin(name : String, args : Array[Value]) -> Result[Value, RegoError] 
       Value::Set(items) => Ok(Value::Number(items.length().to_double()))
       Value::Object(pairs) => Ok(Value::Number(pairs.length().to_double()))
       Value::String(s) => Ok(Value::Number(chars_of(s).length().to_double()))
-      other => Err(type_error(name, 0, "an array, set, object or string", other))
+      other =>
+        Err(type_error(name, 0, "an array, set, object or string", other))
     }
   }
   if name == "sum" || name == "product" {
@@ -250,7 +273,8 @@ fn eval_builtin(name : String, args : Array[Value]) -> Result[Value, RegoError] 
       match v {
         Value::Bool(true) => seen_true = true
         Value::Bool(false) => all_true = false
-        other => return Err(type_error(name, 0, "a collection of booleans", other))
+        other =>
+          return Err(type_error(name, 0, "a collection of booleans", other))
       }
     }
     if name == "all" {
@@ -345,7 +369,10 @@ fn eval_builtin(name : String, args : Array[Value]) -> Result[Value, RegoError] 
       Err(e) => return Err(e)
       Ok(v) => v
     }
-    let parts = s.split(delim).to_array().map(fn(v) { Value::String(v.to_owned()) })
+    let parts = s
+      .split(delim)
+      .to_array()
+      .map(fn(v) { Value::String(v.to_owned()) })
     return Ok(Value::Array(parts))
   }
   if name == "concat" {
@@ -361,7 +388,8 @@ fn eval_builtin(name : String, args : Array[Value]) -> Result[Value, RegoError] 
     for v in items {
       match v {
         Value::String(s) => parts.push(s)
-        other => return Err(type_error(name, 1, "an array or set of strings", other))
+        other =>
+          return Err(type_error(name, 1, "an array or set of strings", other))
       }
     }
     return Ok(Value::String(join_strings(parts, delim)))
@@ -461,7 +489,10 @@ fn eval_builtin(name : String, args : Array[Value]) -> Result[Value, RegoError] 
       args[0] is Value::Null
     } else {
       return Err(
-        RegoError::make(RegoErrorKind::TypeError, "unknown builtin `" + name + "`"),
+        RegoError::make(
+          RegoErrorKind::TypeError,
+          "unknown builtin `" + name + "`",
+        ),
       )
     }
     return Ok(Value::Bool(ok))
@@ -634,7 +665,9 @@ fn eval_builtin(name : String, args : Array[Value]) -> Result[Value, RegoError] 
         Err(
           RegoError::make(
             RegoErrorKind::TypeError,
-            "builtin `regex.match` received an invalid pattern `" + pattern + "`",
+            "builtin `regex.match` received an invalid pattern `" +
+            pattern +
+            "`",
           ),
         )
       Some(r) =>
@@ -695,7 +728,8 @@ fn slice_chars(src : Array[Char], start : Int, count : Int) -> String {
   String::from_array(out)
 }
 
-///| Whether a character is ASCII whitespace, matching Go's `strings.TrimSpace`
+///|
+/// Whether a character is ASCII whitespace, matching Go's `strings.TrimSpace`
 /// for the common cases.
 fn is_space_char(c : Char) -> Bool {
   let n = c.to_int()
@@ -716,7 +750,8 @@ fn trim_whitespace(s : String) -> String {
   slice_chars(src, start, stop - start)
 }
 
-///| Index of the first occurrence of `sub` in `s` by code point, or `-1`.
+///|
+/// Index of the first occurrence of `sub` in `s` by code point, or `-1`.
 fn index_of(s : String, sub : String) -> Int {
   let src = chars_of(s)
   let needle = chars_of(sub)
@@ -744,7 +779,8 @@ fn index_of(s : String, sub : String) -> Int {
   -1
 }
 
-///| Replace every occurrence of `old` with `replacement`.
+///|
+/// Replace every occurrence of `old` with `replacement`.
 ///
 /// An empty `old` inserts `replacement` between every pair of code points and
 /// at both ends, matching OPA's `strings.Replace(..., -1)` behaviour.
@@ -784,16 +820,16 @@ fn replace_all(s : String, old : String, replacement : String) -> String {
   sb.to_string()
 }
 
-///| Compile a regular expression, returning `None` on a malformed pattern.
+///|
+/// Compile a regular expression, returning `None` on a malformed pattern.
 fn compile_regex(pattern : String) -> @regexp.Regexp? {
-  try {
-    Some(@regexp.compile(pattern))
-  } catch {
+  Some(@regexp.compile(pattern)) catch {
     _ => None
   }
 }
 
-///| A pragmatic subset of Go's `sprintf`.
+///|
+/// A pragmatic subset of Go's `sprintf`.
 ///
 /// Supported verbs: `%v`, `%s`, `%d`, `%f`, `%q`, and `%%`. Width and
 /// precision are honoured for `%f`; other flags are accepted and ignored.
@@ -821,11 +857,13 @@ fn sprintf(fmt : String, args : Array[Value]) -> String {
     }
     // skip flags and width
     while i < src.length() &&
-      (src[i].to_int() == 43 ||
-        src[i].to_int() == 45 ||
-        src[i].to_int() == 32 ||
-        src[i].to_int() == 48 ||
-        (src[i].to_int() >= 48 && src[i].to_int() <= 57)) {
+          (
+            src[i].to_int() == 43 ||
+            src[i].to_int() == 45 ||
+            src[i].to_int() == 32 ||
+            src[i].to_int() == 48 ||
+            (src[i].to_int() >= 48 && src[i].to_int() <= 57)
+          ) {
       i = i + 1
     }
     // precision
@@ -882,7 +920,8 @@ fn sprintf(fmt : String, args : Array[Value]) -> String {
   sb.to_string()
 }
 
-///| Fixed-point formatting with `precision` digits after the decimal point.
+///|
+/// Fixed-point formatting with `precision` digits after the decimal point.
 fn format_fixed(d : Double, precision : Int) -> String {
   if precision <= 0 {
     return d.round().to_int().to_string()
@@ -897,7 +936,7 @@ fn format_fixed(d : Double, precision : Int) -> String {
   let magnitude = if negative { -d } else { d }
   let scaled = (magnitude * scale).round()
   let whole = (scaled / scale).to_int()
-  let frac = (scaled - (whole.to_double() * scale)).to_int()
+  let frac = (scaled - whole.to_double() * scale).to_int()
   let frac_text = frac.to_string()
   let padding = StringBuilder::new()
   let mut pad = precision - frac_text.length()

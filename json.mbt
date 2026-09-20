@@ -3,7 +3,8 @@
 /// The grammar is strict RFC 8259: no trailing commas, no comments, no
 /// `NaN`/`Infinity`, and control characters must be escaped.
 
-///| Mutable reader state over a character array.
+///|
+/// Mutable reader state over a character array.
 priv struct JsonReader {
   chars : Array[Char]
   mut pos : Int
@@ -56,7 +57,7 @@ fn JsonReader::skip_ws(self : JsonReader) -> Unit {
 fn JsonReader::expect_literal(
   self : JsonReader,
   text : String,
-  value : Value
+  value : Value,
 ) -> Result[Value, RegoError] {
   for c in text {
     match self.peek_code() {
@@ -66,19 +67,23 @@ fn JsonReader::expect_literal(
         } else {
           return Err(self.err("invalid literal, expected `" + text + "`"))
         }
-      None => return Err(self.err("unexpected end of input in literal `" + text + "`"))
+      None =>
+        return Err(
+          self.err("unexpected end of input in literal `" + text + "`"),
+        )
     }
   }
   Ok(value)
 }
 
-///| Parse a complete JSON document.
+///|
+/// Parse a complete JSON document.
 pub fn parse_json(text : String) -> Result[Value, RegoError] {
   let chars : Array[Char] = []
   for c in text {
     chars.push(c)
   }
-  let reader : JsonReader = { chars: chars, pos: 0, line: 1, column: 1 }
+  let reader : JsonReader = { chars, pos: 0, line: 1, column: 1 }
   reader.skip_ws()
   match reader.parse_value() {
     Err(e) => Err(e)
@@ -196,7 +201,9 @@ fn JsonReader::parse_object(self : JsonReader) -> Result[Value, RegoError] {
 }
 
 ///|
-fn JsonReader::parse_string_value(self : JsonReader) -> Result[Value, RegoError] {
+fn JsonReader::parse_string_value(
+  self : JsonReader,
+) -> Result[Value, RegoError] {
   match self.parse_string_raw() {
     Err(e) => Err(e)
     Ok(s) => Ok(Value::String(s))
@@ -229,7 +236,8 @@ fn JsonReader::parse_hex4(self : JsonReader) -> Result[Int, RegoError] {
   Ok(value)
 }
 
-///| Parse a string body, assuming the reader is positioned on the opening `"`.
+///|
+/// Parse a string body, assuming the reader is positioned on the opening `"`.
 fn JsonReader::parse_string_raw(self : JsonReader) -> Result[String, RegoError] {
   self.advance()
   let sb = StringBuilder::new()
@@ -265,10 +273,7 @@ fn JsonReader::parse_string_raw(self : JsonReader) -> Result[String, RegoError] 
             } else if n == 117 {
               match self.parse_hex4() {
                 Err(e) => return Err(e)
-                Ok(cp) =>
-                  if cp >= 0 {
-                    sb.write_char(cp.unsafe_to_char())
-                  }
+                Ok(cp) => if cp >= 0 { sb.write_char(cp.unsafe_to_char()) }
               }
             } else {
               return Err(self.err("invalid escape sequence in string"))
@@ -362,7 +367,8 @@ fn JsonReader::parse_number(self : JsonReader) -> Result[Value, RegoError] {
   }
 }
 
-///| Convert a strict JSON decimal literal to a `Double`.
+///|
+/// Convert a strict JSON decimal literal to a `Double`.
 pub fn parse_decimal(s : String) -> Double? {
   let chars : Array[Char] = []
   for c in s {

@@ -1,4 +1,5 @@
-///| The category of a Rego engine error.
+///|
+/// The category of a Rego engine error.
 ///
 /// Every failure surfaced by the engine is classified, so callers can react to
 /// a missing document differently from a syntax error.
@@ -15,7 +16,8 @@ pub(all) enum RegoErrorKind {
   CompileError
 }
 
-///| A structured engine error, optionally carrying a source position.
+///|
+/// A structured engine error, optionally carrying a source position.
 pub(all) struct RegoError {
   kind : RegoErrorKind
   message : String
@@ -23,22 +25,25 @@ pub(all) struct RegoError {
   column : Int
 }
 
-///| An error with no source position.
+///|
+/// An error with no source position.
 pub fn RegoError::make(kind : RegoErrorKind, message : String) -> RegoError {
-  { kind: kind, message: message, line: 0, column: 0 }
+  { kind, message, line: 0, column: 0 }
 }
 
-///| An error located at a line/column in the policy source.
+///|
+/// An error located at a line/column in the policy source.
 pub fn RegoError::at(
   kind : RegoErrorKind,
   message : String,
   line : Int,
-  column : Int
+  column : Int,
 ) -> RegoError {
-  { kind: kind, message: message, line: line, column: column }
+  { kind, message, line, column }
 }
 
-///| A short machine-friendly label for the error category.
+///|
+/// A short machine-friendly label for the error category.
 pub fn RegoErrorKind::label(self : RegoErrorKind) -> String {
   match self {
     RegoErrorKind::LexError => "lex"
@@ -54,7 +59,8 @@ pub fn RegoErrorKind::label(self : RegoErrorKind) -> String {
   }
 }
 
-///| Render an error for humans, including the position when it is known.
+///|
+/// Render an error for humans, including the position when it is known.
 pub fn RegoError::render(self : RegoError) -> String {
   if self.line > 0 {
     "[" +

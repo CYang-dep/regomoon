@@ -41,7 +41,10 @@ test "builtins: aggregation" {
   assert_eq(call1("max", "[3,1,2]"), "3")
   assert_eq(call1("min", "[3,1,2]"), "1")
   assert_eq(call1("sort", "[3,1,2]"), "[1, 2, 3]")
-  assert_eq(call("sort", [make_set([Value::Number(3.0), Value::Number(1.0)])]), "[1, 3]")
+  assert_eq(
+    call("sort", [make_set([Value::Number(3.0), Value::Number(1.0)])]),
+    "[1, 3]",
+  )
   assert_eq(call1("all", "[true,true]"), "true")
   assert_eq(call1("all", "[true,false]"), "false")
   assert_eq(call1("any", "[false,true]"), "true")
@@ -74,9 +77,15 @@ test "builtins: string functions" {
   assert_eq(call("endswith", [jv("\"hello\""), jv("\"lo\"")]), "true")
   assert_eq(call("contains", [jv("\"hello\""), jv("\"ell\"")]), "true")
   assert_eq(call("contains", [jv("\"hello\""), jv("\"zz\"")]), "false")
-  assert_eq(call("split", [jv("\"a,b,c\""), jv("\",\"")]), "[\"a\", \"b\", \"c\"]")
+  assert_eq(
+    call("split", [jv("\"a,b,c\""), jv("\",\"")]),
+    "[\"a\", \"b\", \"c\"]",
+  )
   assert_eq(call("concat", [jv("\"-\""), jv("[\"a\",\"b\"]")]), "\"a-b\"")
-  assert_eq(call("replace", [jv("\"a-b\""), jv("\"-\""), jv("\"+\"")]), "\"a+b\"")
+  assert_eq(
+    call("replace", [jv("\"a-b\""), jv("\"-\""), jv("\"+\"")]),
+    "\"a+b\"",
+  )
   assert_eq(call("substring", [jv("\"hello\""), jv("1"), jv("3")]), "\"ell\"")
   assert_eq(call("substring", [jv("\"hello\""), jv("2"), jv("-1")]), "\"llo\"")
   assert_eq(call("indexof", [jv("\"hello\""), jv("\"l\"")]), "2")
@@ -85,7 +94,10 @@ test "builtins: string functions" {
 
 ///|
 test "builtins: replace with an empty needle" {
-  assert_eq(call("replace", [jv("\"ab\""), jv("\"\""), jv("\"-\"")]), "\"-a-b-\"")
+  assert_eq(
+    call("replace", [jv("\"ab\""), jv("\"\""), jv("\"-\"")]),
+    "\"-a-b-\"",
+  )
 }
 
 ///|
@@ -141,7 +153,10 @@ test "builtins: arrays and objects" {
 
 ///|
 test "builtins: json codec" {
-  assert_eq(call("json.marshal", [jv("{\"b\":2,\"a\":1}")]), "\"{\\\"a\\\":1,\\\"b\\\":2}\"")
+  assert_eq(
+    call("json.marshal", [jv("{\"b\":2,\"a\":1}")]),
+    "\"{\\\"a\\\":1,\\\"b\\\":2}\"",
+  )
   assert_eq(call("json.unmarshal", [jv("\"[1,2]\"")]), "[1, 2]")
   assert_eq(call("json.unmarshal", [jv("\"not json\"")]), "ERR:json")
 }

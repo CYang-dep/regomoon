@@ -1,4 +1,5 @@
-///| The Rego value model.
+///|
+/// The Rego value model.
 ///
 /// Rego values are the JSON document model extended with sets:
 /// `null`, booleans, numbers, strings, arrays, objects, and sets.
@@ -23,7 +24,8 @@ pub(all) enum Value {
   Object(Array[(String, Value)])
 }
 
-///| The Rego type-ordering rank of a value.
+///|
+/// The Rego type-ordering rank of a value.
 ///
 /// OPA orders values across types as
 /// `null < boolean < number < string < array < object < set`.
@@ -39,7 +41,8 @@ fn type_rank(v : Value) -> Int {
   }
 }
 
-///| A stable name for the value's type, used in error messages.
+///|
+/// A stable name for the value's type, used in error messages.
 pub fn Value::type_name(self : Value) -> String {
   match self {
     Value::Null => "null"
@@ -52,7 +55,8 @@ pub fn Value::type_name(self : Value) -> String {
   }
 }
 
-///| Rego truthiness: booleans are the only booleans.
+///|
+/// Rego truthiness: booleans are the only booleans.
 ///
 /// Rego has no truthiness coercion, so a non-boolean used in a boolean
 /// position is a type error, not a falsy value. This returns `None` for
@@ -64,7 +68,8 @@ pub fn Value::as_bool(self : Value) -> Bool? {
   }
 }
 
-///| Structural equality.
+///|
+/// Structural equality.
 pub fn Value::equals(self : Value, other : Value) -> Bool {
   if type_rank(self) != type_rank(other) {
     return false
@@ -74,37 +79,36 @@ pub fn Value::equals(self : Value, other : Value) -> Bool {
     (Value::Bool(a), Value::Bool(b)) => a == b
     (Value::Number(a), Value::Number(b)) => a == b
     (Value::String(a), Value::String(b)) => a == b
-    (Value::Array(a), Value::Array(b)) | (Value::Set(a), Value::Set(b)) => {
+    (Value::Array(a), Value::Array(b)) | (Value::Set(a), Value::Set(b)) =>
       if a.length() != b.length() {
         false
       } else {
         let mut same = true
         for i = 0; i < a.length(); i = i + 1 {
-          if !(a[i].equals(b[i])) {
+          if !a[i].equals(b[i]) {
             same = false
           }
         }
         same
       }
-    }
-    (Value::Object(a), Value::Object(b)) => {
+    (Value::Object(a), Value::Object(b)) =>
       if a.length() != b.length() {
         false
       } else {
         let mut same = true
         for i = 0; i < a.length(); i = i + 1 {
-          if a[i].0 != b[i].0 || !(a[i].1.equals(b[i].1)) {
+          if a[i].0 != b[i].0 || !a[i].1.equals(b[i].1) {
             same = false
           }
         }
         same
       }
-    }
     _ => false
   }
 }
 
-///| Total ordering across all Rego values, matching OPA's `ast.Compare`.
+///|
+/// Total ordering across all Rego values, matching OPA's `ast.Compare`.
 ///
 /// Returns a negative integer, zero, or a positive integer.
 pub fn Value::compare(self : Value, other : Value) -> Int {
@@ -115,16 +119,25 @@ pub fn Value::compare(self : Value, other : Value) -> Int {
   }
   match (self, other) {
     (Value::Null, Value::Null) => 0
-    (Value::Bool(a), Value::Bool(b)) => {
-      if a == b { 0 } else if a { 1 } else { -1 }
-    }
-    (Value::Number(a), Value::Number(b)) => {
-      if a < b { -1 } else if a > b { 1 } else { 0 }
-    }
+    (Value::Bool(a), Value::Bool(b)) =>
+      if a == b {
+        0
+      } else if a {
+        1
+      } else {
+        -1
+      }
+    (Value::Number(a), Value::Number(b)) =>
+      if a < b {
+        -1
+      } else if a > b {
+        1
+      } else {
+        0
+      }
     (Value::String(a), Value::String(b)) => compare_string(a, b)
-    (Value::Array(a), Value::Array(b)) | (Value::Set(a), Value::Set(b)) => {
+    (Value::Array(a), Value::Array(b)) | (Value::Set(a), Value::Set(b)) =>
       compare_seq(a, b)
-    }
     (Value::Object(a), Value::Object(b)) => {
       let n = if a.length() < b.length() { a.length() } else { b.length() }
       let mut i = 0
@@ -145,7 +158,8 @@ pub fn Value::compare(self : Value, other : Value) -> Int {
   }
 }
 
-///| Lexicographic comparison of two strings by Unicode code point.
+///|
+/// Lexicographic comparison of two strings by Unicode code point.
 fn compare_string(a : String, b : String) -> Int {
   let ca : Array[Char] = []
   for c in a {
@@ -168,7 +182,8 @@ fn compare_string(a : String, b : String) -> Int {
   ca.length() - cb.length()
 }
 
-///| Lexicographic comparison of two value sequences.
+///|
+/// Lexicographic comparison of two value sequences.
 fn compare_seq(a : Array[Value], b : Array[Value]) -> Int {
   let n = if a.length() < b.length() { a.length() } else { b.length() }
   let mut i = 0
@@ -182,7 +197,8 @@ fn compare_seq(a : Array[Value], b : Array[Value]) -> Int {
   a.length() - b.length()
 }
 
-///| In-place insertion sort. Used instead of a generic sort so the canonical
+///|
+/// In-place insertion sort. Used instead of a generic sort so the canonical
 /// ordering of sets and objects does not depend on trait resolution.
 fn sort_values(items : Array[Value]) -> Unit {
   let n = items.length()
@@ -199,28 +215,31 @@ fn sort_values(items : Array[Value]) -> Unit {
   }
 }
 
-///| A copy of `items` sorted by the Rego total order.
+///|
+/// A copy of `items` sorted by the Rego total order.
 pub fn sorted_values(items : Array[Value]) -> Array[Value] {
   let out = items.copy()
   sort_values(out)
   out
 }
 
-///| Build a canonical set from arbitrary items: sorted and deduplicated.
+///|
+/// Build a canonical set from arbitrary items: sorted and deduplicated.
 pub fn make_set(items : Array[Value]) -> Value {
   let sorted = items.copy()
   sort_values(sorted)
   let out : Array[Value] = []
   for v in sorted {
     let last = out.length() - 1
-    if last < 0 || !(out[last].equals(v)) {
+    if last < 0 || !out[last].equals(v) {
       out.push(v)
     }
   }
   Value::Set(out)
 }
 
-///| Build a canonical object from key/value pairs: sorted by key, last write wins.
+///|
+/// Build a canonical object from key/value pairs: sorted by key, last write wins.
 pub fn make_object(pairs : Array[(String, Value)]) -> Value {
   let sorted = pairs.copy()
   let n = sorted.length()
@@ -247,7 +266,8 @@ pub fn make_object(pairs : Array[(String, Value)]) -> Value {
   Value::Object(out)
 }
 
-///| Look up a key in an object.
+///|
+/// Look up a key in an object.
 pub fn Value::get_field(self : Value, key : String) -> Value? {
   match self {
     Value::Object(pairs) => {
@@ -263,7 +283,8 @@ pub fn Value::get_field(self : Value, key : String) -> Value? {
   }
 }
 
-///| Whether a set contains a value.
+///|
+/// Whether a set contains a value.
 pub fn Value::set_contains(self : Value, item : Value) -> Bool {
   match self {
     Value::Set(items) => {
@@ -279,7 +300,8 @@ pub fn Value::set_contains(self : Value, item : Value) -> Bool {
   }
 }
 
-///| Elements of an array, or of a set in canonical order.
+///|
+/// Elements of an array, or of a set in canonical order.
 pub fn Value::elements(self : Value) -> Array[Value]? {
   match self {
     Value::Array(items) => Some(items)
@@ -292,13 +314,15 @@ pub fn Value::elements(self : Value) -> Array[Value]? {
 // Rendering
 // ---------------------------------------------------------------------------
 
-///| Format a number the way OPA does: integral values have no fractional part.
+///|
+/// Format a number the way OPA does: integral values have no fractional part.
 pub fn format_number(d : Double) -> String {
   let s = d.to_string()
   s
 }
 
-///| Append `\uXXXX`-style escaping of a string body.
+///|
+/// Append `\uXXXX`-style escaping of a string body.
 fn write_escaped(sb : StringBuilder, s : String) -> Unit {
   for c in s {
     let n = c.to_int()
@@ -325,7 +349,8 @@ fn write_escaped(sb : StringBuilder, s : String) -> Unit {
   }
 }
 
-///| Four-digit lowercase hex, for `\u` escapes.
+///|
+/// Four-digit lowercase hex, for `\u` escapes.
 fn hex4(n : Int) -> String {
   let digits = "0123456789abcdef"
   let d : Array[Char] = []
@@ -349,7 +374,8 @@ fn hex4(n : Int) -> String {
   String::from_array(rev)
 }
 
-///| Render a value as Rego source (strings quoted, sets as `{...}`).
+///|
+/// Render a value as Rego source (strings quoted, sets as `{...}`).
 pub fn Value::to_rego_string(self : Value) -> String {
   let sb = StringBuilder::new()
   write_rego(sb, self)
@@ -379,7 +405,7 @@ fn write_rego(sb : StringBuilder, v : Value) -> Unit {
       }
       sb.write_char(']')
     }
-    Value::Set(items) => {
+    Value::Set(items) =>
       if items.length() == 0 {
         sb.write_string("set()")
       } else {
@@ -394,7 +420,6 @@ fn write_rego(sb : StringBuilder, v : Value) -> Unit {
         }
         sb.write_char('}')
       }
-    }
     Value::Object(pairs) => {
       sb.write_char('{')
       let mut i = 0
@@ -413,7 +438,8 @@ fn write_rego(sb : StringBuilder, v : Value) -> Unit {
   }
 }
 
-///| Render a value as JSON. Sets are emitted as arrays, matching OPA's
+///|
+/// Render a value as JSON. Sets are emitted as arrays, matching OPA's
 /// `json.marshal` behaviour for set-valued results.
 pub fn Value::to_json_string(self : Value) -> String {
   let sb = StringBuilder::new()

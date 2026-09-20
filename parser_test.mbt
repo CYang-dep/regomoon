@@ -38,18 +38,27 @@ test "parser: package and imports" {
 
 ///|
 test "parser: complete rules in both spellings" {
-  assert_eq(show_module("package a\nallow if { true }"), "package a | allow if { true }")
-  assert_eq(show_module("package a\nallow { true }"), "package a | allow if { true }")
-  assert_eq(show_module("package a\nallow := true"), "package a | allow := true")
-  assert_eq(show_module("package a\ndefault allow := false"), "package a | default allow := false")
+  assert_eq(
+    show_module("package a\nallow if { true }"),
+    "package a | allow if { true }",
+  )
+  assert_eq(
+    show_module("package a\nallow { true }"),
+    "package a | allow if { true }",
+  )
+  assert_eq(
+    show_module("package a\nallow := true"),
+    "package a | allow := true",
+  )
+  assert_eq(
+    show_module("package a\ndefault allow := false"),
+    "package a | default allow := false",
+  )
 }
 
 ///|
 test "parser: partial set and partial object rules" {
-  assert_eq(
-    show_module("package a\np contains 1"),
-    "package a | p contains 1",
-  )
+  assert_eq(show_module("package a\np contains 1"), "package a | p contains 1")
   assert_eq(
     show_module("package a\np[x] := 1 if { x := 1 }"),
     "package a | p[x] := 1 if { (x := 1) }",
@@ -135,7 +144,9 @@ test "parser: some, every, not" {
 ///|
 test "parser: comments and blank lines" {
   assert_eq(
-    show_module("# header\npackage a\n\n# a rule\nallow if { true } # trailing\n"),
+    show_module(
+      "# header\npackage a\n\n# a rule\nallow if { true } # trailing\n",
+    ),
     "package a | allow if { true }",
   )
 }

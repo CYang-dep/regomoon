@@ -18,7 +18,12 @@ fn run(source : String, input : String, query : String) -> String {
 }
 
 ///|
-fn run_data(source : String, data : String, input : String, query : String) -> String {
+fn run_data(
+  source : String,
+  data : String,
+  input : String,
+  query : String,
+) -> String {
   let policy = match Policy::compile(source) {
     Err(e) => return "COMPILE:" + e.render()
     Ok(p) => p
@@ -42,6 +47,7 @@ fn run_data(source : String, data : String, input : String, query : String) -> S
 // ACL
 // ---------------------------------------------------------------------------
 
+///|
 const ACL : String =
   #|package authz
   #|
@@ -54,13 +60,22 @@ const ACL : String =
 
 ///|
 test "engine: ACL allows the matching request" {
-  assert_eq(run(ACL, "{\"action\":\"read\",\"object\":\"data1\"}", "allow"), "true")
+  assert_eq(
+    run(ACL, "{\"action\":\"read\",\"object\":\"data1\"}", "allow"),
+    "true",
+  )
 }
 
 ///|
 test "engine: ACL denies other requests via the default rule" {
-  assert_eq(run(ACL, "{\"action\":\"write\",\"object\":\"data1\"}", "allow"), "false")
-  assert_eq(run(ACL, "{\"action\":\"read\",\"object\":\"data2\"}", "allow"), "false")
+  assert_eq(
+    run(ACL, "{\"action\":\"write\",\"object\":\"data1\"}", "allow"),
+    "false",
+  )
+  assert_eq(
+    run(ACL, "{\"action\":\"read\",\"object\":\"data2\"}", "allow"),
+    "false",
+  )
   assert_eq(run(ACL, "{}", "allow"), "false")
 }
 
@@ -68,6 +83,7 @@ test "engine: ACL denies other requests via the default rule" {
 // RBAC
 // ---------------------------------------------------------------------------
 
+///|
 const RBAC : String =
   #|package authz
   #|
@@ -87,6 +103,7 @@ const RBAC : String =
   #|  name == user
   #|}
 
+///|
 const ROLES : String = "{\"roles\":{\"alice\":[\"admin\"],\"bob\":[\"dev\"]}}"
 
 ///|
@@ -107,6 +124,7 @@ test "engine: a parameterised rule is callable directly" {
 // Partial rules
 // ---------------------------------------------------------------------------
 
+///|
 const DENY_LIST : String =
   #|package authz
   #|
@@ -126,8 +144,14 @@ test "engine: partial set rules accumulate across clauses" {
     run(DENY_LIST, "{\"authenticated\":false,\"user\":\"x\"}", "deny"),
     "{\"not authenticated\"}",
   )
-  assert_eq(run(DENY_LIST, "{\"authenticated\":true,\"user\":\"\"}", "deny"), "{\"no user\"}")
-  assert_eq(run(DENY_LIST, "{\"authenticated\":true,\"user\":\"x\"}", "deny"), "set()")
+  assert_eq(
+    run(DENY_LIST, "{\"authenticated\":true,\"user\":\"\"}", "deny"),
+    "{\"no user\"}",
+  )
+  assert_eq(
+    run(DENY_LIST, "{\"authenticated\":true,\"user\":\"x\"}", "deny"),
+    "set()",
+  )
 }
 
 ///|
@@ -138,6 +162,7 @@ test "engine: two reasons land in the same set" {
   )
 }
 
+///|
 const TOTALS : String =
   #|package authz
   #|
@@ -161,6 +186,7 @@ test "engine: partial object rules build a mapping" {
 // Comprehensions and quantifiers
 // ---------------------------------------------------------------------------
 
+///|
 const AGGREGATES : String =
   #|package authz
   #|
@@ -182,22 +208,24 @@ const AGGREGATES : String =
   #|  n.age >= 18
   #|}
 
-const ITEMS : String =
-  "{\"items\":[{\"name\":\"a\",\"age\":20},{\"name\":\"b\",\"age\":10}]}"
+///|
+const ITEMS : String = "{\"items\":[{\"name\":\"a\",\"age\":20},{\"name\":\"b\",\"age\":10}]}"
 
 ///|
 test "engine: array, set and object comprehensions" {
   assert_eq(run_data(AGGREGATES, ITEMS, "{}", "names"), "[\"a\", \"b\"]")
   assert_eq(run_data(AGGREGATES, ITEMS, "{}", "adults"), "{\"a\"}")
-  assert_eq(run_data(AGGREGATES, ITEMS, "{}", "by_name"), "{\"a\": 20, \"b\": 10}")
+  assert_eq(
+    run_data(AGGREGATES, ITEMS, "{}", "by_name"),
+    "{\"a\": 20, \"b\": 10}",
+  )
 }
 
 ///|
 test "engine: every is universal, some is existential" {
   assert_eq(run_data(AGGREGATES, ITEMS, "{}", "all_adults"), "undefined")
   assert_eq(run_data(AGGREGATES, ITEMS, "{}", "any_adult"), "true")
-  let all_grown =
-    "{\"items\":[{\"name\":\"a\",\"age\":20},{\"name\":\"b\",\"age\":30}]}"
+  let all_grown = "{\"items\":[{\"name\":\"a\",\"age\":20},{\"name\":\"b\",\"age\":30}]}"
   assert_eq(run_data(AGGREGATES, all_grown, "{}", "all_adults"), "true")
 }
 
@@ -205,6 +233,7 @@ test "engine: every is universal, some is existential" {
 // Matching helpers
 // ---------------------------------------------------------------------------
 
+///|
 const PREFIX_MATCH : String =
   #|package authz
   #|
@@ -217,8 +246,8 @@ const PREFIX_MATCH : String =
   #|  regex.match(data.pattern, input.path)
   #|}
 
-const PREFIX_DATA : String =
-  "{\"prefixes\":[\"/public/\",\"/shared/\"],\"pattern\":\"^/public/.*$\"}"
+///|
+const PREFIX_DATA : String = "{\"prefixes\":[\"/public/\",\"/shared/\"],\"pattern\":\"^/public/.*$\"}"
 
 ///|
 test "engine: startswith-based path matching" {
@@ -240,6 +269,7 @@ test "engine: startswith-based path matching" {
 // Undefined vs false
 // ---------------------------------------------------------------------------
 
+///|
 const SPARSE : String =
   #|package authz
   #|
@@ -277,6 +307,7 @@ test "engine: package_value collects every defined rule" {
 // Operators
 // ---------------------------------------------------------------------------
 
+///|
 const OPERATORS : String =
   #|package authz
   #|
