@@ -196,3 +196,58 @@ test "builtins: is_builtin and arity table" {
   assert_true(builtin_arity("set") is Some(0))
   assert_true(builtin_arity("nope") is None)
 }
+
+///|
+test "builtins: object.remove and object.filter" {
+  assert_eq(
+    call("object.remove", [jv("{\"a\":1,\"b\":2,\"c\":3}"), jv("[\"b\"]")]),
+    "{\"a\": 1, \"c\": 3}",
+  )
+  let keep = make_set([Value::String("a"), Value::String("c")])
+  assert_eq(
+    call("object.filter", [jv("{\"a\":1,\"b\":2,\"c\":3}"), keep]),
+    "{\"a\": 1, \"c\": 3}",
+  )
+  assert_eq(call("object.remove", [jv("{\"a\":1}"), jv("[]")]), "{\"a\": 1}")
+}
+
+///|
+test "builtins: array.slice follows OPA's negative-index rules" {
+  assert_eq(call("array.slice", [jv("[1,2,3,4]"), jv("1"), jv("3")]), "[2, 3]")
+  assert_eq(call("array.slice", [jv("[1,2,3,4]"), jv("-2"), jv("-1")]), "[3]")
+  // stop is exclusive and a non-positive stop counts back from the end, so
+  // slice(arr, 0, -1) drops the last element
+  assert_eq(
+    call("array.slice", [jv("[1,2,3,4]"), jv("0"), jv("-1")]),
+    "[1, 2, 3]",
+  )
+  assert_eq(call("array.slice", [jv("[1,2,3]"), jv("2"), jv("1")]), "[]")
+}
+
+///|
+test "builtins: trim_prefix and trim_suffix" {
+  assert_eq(
+    call("trim_prefix", [jv("\"/api/v1/x\""), jv("\"/api/v1\"")]),
+    "\"/x\"",
+  )
+  assert_eq(call("trim_prefix", [jv("\"other\""), jv("\"/api\"")]), "\"other\"")
+  assert_eq(
+    call("trim_suffix", [jv("\"file.txt\""), jv("\".txt\"")]),
+    "\"file\"",
+  )
+  assert_eq(call("trim_suffix", [jv("\"file\""), jv("\".txt\"")]), "\"file\"")
+}
+
+///|
+test "builtins: numbers.range_step" {
+  assert_eq(
+    call("numbers.range_step", [jv("0"), jv("10"), jv("3")]),
+    "[0, 3, 6, 9]",
+  )
+  assert_eq(
+    call("numbers.range_step", [jv("10"), jv("0"), jv("-4")]),
+    "[10, 6, 2]",
+  )
+  assert_eq(call("numbers.range_step", [jv("1"), jv("1"), jv("5")]), "[1]")
+  assert_eq(call("numbers.range_step", [jv("0"), jv("1"), jv("0")]), "ERR:type")
+}

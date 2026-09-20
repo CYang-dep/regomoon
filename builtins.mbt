@@ -54,6 +54,12 @@ pub fn builtin_arity(name : String) -> Int? {
     "regex.match" => Some(2)
     "regex.is_valid" => Some(1)
     "numbers.range" => Some(2)
+    "numbers.range_step" => Some(3)
+    "array.slice" => Some(3)
+    "trim_prefix" => Some(2)
+    "trim_suffix" => Some(2)
+    "object.remove" => Some(2)
+    "object.filter" => Some(2)
     _ => None
   }
 }
@@ -701,6 +707,128 @@ fn eval_builtin(name : String, args : Array[Value]) -> Result[Value, RegoError] 
       while i >= to {
         out.push(Value::Number(i.to_double()))
         i = i - 1
+      }
+    }
+    return Ok(Value::Array(out))
+  }
+  // --- added builtins ----------------------------------------------------
+  if name == "object.remove" || name == "object.filter" {
+    let pairs = match want_object(name, args, 0) {
+      Err(e) => return Err(e)
+      Ok(v) => v
+    }
+    let keys = match want_items(name, args, 1) {
+      Err(e) => return Err(e)
+      Ok(v) => v
+    }
+    let keep = if name == "object.remove" { false } else { true }
+    let out : Array[(String, Value)] = []
+    for kv in pairs {
+      let mut selected = false
+      for k in keys {
+        match k {
+          Value::String(key) => if key == kv.0 { selected = true }
+          _ => ()
+        }
+      }
+      if selected == keep {
+        out.push(kv)
+      }
+    }
+    return Ok(make_object(out))
+  }
+  if name == "array.slice" {
+    let items = match want_items(name, args, 0) {
+      Err(e) => return Err(e)
+      Ok(v) => v
+    }
+    let start_d = match want_number(name, args, 1) {
+      Err(e) => return Err(e)
+      Ok(v) => v
+    }
+    let stop_d = match want_number(name, args, 2) {
+      Err(e) => return Err(e)
+      Ok(v) => v
+    }
+    let n = items.length()
+    // OPA semantics: a negative index counts back from the end, and the range
+    // is half-open [start, stop).
+    let start = if start_d < 0.0 {
+      n + start_d.to_int()
+    } else {
+      start_d.to_int()
+    }
+    let stop = if stop_d <= 0.0 { n + stop_d.to_int() } else { stop_d.to_int() }
+    let lo = if start < 0 { 0 } else if start > n { n } else { start }
+    let hi = if stop < lo { lo } else if stop > n { n } else { stop }
+    let out : Array[Value] = []
+    let mut i = lo
+    while i < hi {
+      out.push(items[i])
+      i = i + 1
+    }
+    return Ok(Value::Array(out))
+  }
+  if name == "trim_prefix" || name == "trim_suffix" {
+    let str = match want_string(name, args, 0) {
+      Err(e) => return Err(e)
+      Ok(v) => v
+    }
+    let cut = match want_string(name, args, 1) {
+      Err(e) => return Err(e)
+      Ok(v) => v
+    }
+    let src = chars_of(str)
+    let cut_len = chars_of(cut).length()
+    if name == "trim_prefix" {
+      if cut_len > 0 && str.has_prefix(cut) {
+        return Ok(
+          Value::String(slice_chars(src, cut_len, src.length() - cut_len)),
+        )
+      }
+      return Ok(Value::String(str))
+    }
+    if cut_len > 0 && str.has_suffix(cut) {
+      return Ok(Value::String(slice_chars(src, 0, src.length() - cut_len)))
+    }
+    return Ok(Value::String(str))
+  }
+  if name == "numbers.range_step" {
+    let a = match want_number(name, args, 0) {
+      Err(e) => return Err(e)
+      Ok(v) => v
+    }
+    let b = match want_number(name, args, 1) {
+      Err(e) => return Err(e)
+      Ok(v) => v
+    }
+    let step_d = match want_number(name, args, 2) {
+      Err(e) => return Err(e)
+      Ok(v) => v
+    }
+    if step_d == 0.0 {
+      return Err(
+        RegoError::make(
+          RegoErrorKind::TypeError,
+          "builtin `numbers.range_step` step must not be zero",
+        ),
+      )
+    }
+    let step = step_d.to_int()
+    let from = a.to_int()
+    let to = b.to_int()
+    let out : Array[Value] = []
+    if step > 0 {
+      let mut i = from
+      while i <= to {
+        out.push(Value::Number(i.to_double()))
+        i = i + step
+      }
+    } else {
+      let mut i = from
+      while i >= to {
+        out.push(Value::Number(i.to_double()))
+        i = i + step
       }
     }
     return Ok(Value::Array(out))

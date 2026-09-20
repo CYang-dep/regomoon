@@ -1,13 +1,11 @@
-feat: support the with modifier for input override
+feat(builtins): add object.remove/filter, array.slice, trim helpers and range_step
 
-Policies can now exercise one rule against several inputs without
-recompiling, which is what makes a policy self-testable:
+Six builtins that policy authors reach for constantly and that the initial
+cut omitted:
 
-    allows_read if { allow with input as {"action": "read"} }
+- object.remove / object.filter — drop or keep selected keys
+- array.slice — with OPA semantics for non-positive indices
+- trim_prefix / trim_suffix
+- numbers.range_step — with an explicit step and a clear error for step 0
 
-- parser: statement-level modifiers, plus a top-level parse_query so
-  Policy::query accepts "allow with input as {...}" too
-- eval: the replacement document is evaluated in the enclosing scope and
-  the expression runs in a child environment; bindings do not leak out
-- only `with input as ...` is accepted; `with data.x as ...` and chained
-  modifiers are compile errors, not silent misbehaviour
+Builtin count goes from 46 to 52.
