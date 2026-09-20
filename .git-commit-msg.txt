@@ -1,0 +1,6 @@
+docs: record measured coverage
+
+moon coverage reports 2553/3225 lines covered across the nine engine
+sources (about 79%), and 76% counting the four example programs. The
+weakest file is eval.mbt at 484/687 — mostly error branches and rarely
+taken operator paths, which is where future test work should go.

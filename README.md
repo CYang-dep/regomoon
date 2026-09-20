@@ -194,7 +194,9 @@ report         = {"ci-bot": 0, "deploy-bot": 1, "legacy-job": 2}
   CI 运行记录：<https://github.com/CYang-dep/regomoon/actions/runs/35490606996>
 - **严格检查**：`moon check --target all --deny-warn` 在四个后端全部通过（零警告）。
   工具链 moon 0.1.20260713 / moonc v0.10.4+2cc641edf（本地），CI 使用最新版。
-- **覆盖率**：待验证。尚未跑 `moon coverage`。
+- **覆盖率**：`moon coverage` 实测，引擎 9 个源码文件合计 **2553 / 3225 行（约 79%）**；
+  计入四个示例后为 2553 / 3359（约 76%）。逐文件看，parser.mbt 523/649、json.mbt 265/324、
+  lexer.mbt 324/398，最低的是 eval.mbt 484/687——未覆盖的主要是错误分支与部分罕见运算路径。
 - **性能**：`examples/bench` 在 500 次查询、深度 12 的菱形规则链上实测（同一台机器、
   两次运行的校验和完全一致）：开启规则缓存约 128 ms，绕过缓存约 833 ms，差约 6.5 倍。
   尚未与 OPA 或其它实现做同输入对比，不下"更快"的结论。
