@@ -76,6 +76,17 @@ priv struct Env {
   /// The root `data` document, with package results layered on top on demand.
   data : Value
   input : Value
+  /// Memoisation of argless rules for this evaluation. Rules are pure — they
+  /// read only the module, `data` and `input` — so a result computed once is
+  /// valid for every reference inside the same query. `with` creates a child
+  /// environment with fresh maps, so an overridden input never pollutes it.
+  done : Map[String, Bool]
+  result : Map[String, Value]
+}
+
+///|
+fn Env::make(md : Module, data : Value, input : Value) -> Env {
+  { md, data, input, done: Map([]), result: Map([]) }
 }
 
 // ---------------------------------------------------------------------------
@@ -855,9 +866,39 @@ fn rule_key_value(
 }
 
 ///|
+/// Evaluate every rule with the given name, memoised per query.
+///
+/// A diamond-shaped rule graph would otherwise evaluate the same rule once per
+/// path; the cache turns that into once per query. Errors are never cached.
+fn eval_rule_group(
+  env : Env,
+  depth : Int,
+  name : String,
+) -> Result[Value?, RegoError] {
+  match env.done.get(name) {
+    Some(true) => return Ok(env.result.get(name))
+    Some(false) => return Ok(None)
+    None => ()
+  }
+  match eval_rule_group_uncached(env, depth, name) {
+    Err(e) => Err(e)
+    Ok(res) => {
+      match res {
+        Some(v) => {
+          env.done.set(name, true)
+          env.result.set(name, v)
+        }
+        None => env.done.set(name, false)
+      }
+      Ok(res)
+    }
+  }
+}
+
+///|
 /// Evaluate every rule with the given name, applying `default` rules only
 /// when no other clause produces a value.
-fn eval_rule_group(
+fn eval_rule_group_uncached(
   env : Env,
   depth : Int,
   name : String,
@@ -1126,7 +1167,7 @@ fn eval_with(
   let child : Env = match v {
     // overriding with an undefined document leaves the statement unsatisfied
     None => return Ok([])
-    Some(x) => { md: env.md, data: env.data, input: x }
+    Some(x) => Env::make(env.md, env.data, x)
   }
   let inner = match eval_expr(child, scope, depth, expr) {
     Err(err) => return Err(err)

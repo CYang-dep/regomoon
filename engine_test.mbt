@@ -466,3 +466,20 @@ test "engine: with can be queried directly" {
     "false",
   )
 }
+
+///|
+const DIAMOND : String =
+  #|package a
+  #|
+  #|base := 10
+  #|
+  #|left := base + 1
+  #|right := base + 2
+  #|
+  #|sum := left + right
+
+///|
+test "engine: diamond rule graphs stay correct with memoisation" {
+  assert_eq(run(DIAMOND, "{}", "sum"), "23")
+  assert_eq(run(DIAMOND, "{}", "base"), "10")
+}

@@ -48,7 +48,7 @@ pub fn Policy::package_name(self : Policy) -> String {
 
 ///|
 fn Policy::env(self : Policy) -> Env {
-  { md: self.md, data: self.data, input: self.input }
+  Env::make(self.md, self.data, self.input)
 }
 
 ///|
@@ -155,7 +155,7 @@ pub fn Policy::query(self : Policy, text : String) -> Result[Value?, RegoError] 
       match v {
         None => Ok(None)
         Some(new_input) => {
-          let child : Env = { md: env.md, data: env.data, input: new_input }
+          let child : Env = Env::make(env.md, env.data, new_input)
           eval_expr(child, Scope::empty(), 0, expr)
         }
       }

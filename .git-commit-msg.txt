@@ -1,11 +1,9 @@
-feat(builtins): add object.remove/filter, array.slice, trim helpers and range_step
+perf: memoise argless rule evaluation within a query
 
-Six builtins that policy authors reach for constantly and that the initial
-cut omitted:
+Rules are pure: they read only the module, data and input. A result computed
+once is therefore valid for every reference inside the same query, which
+turns a diamond-shaped rule graph from once-per-path into once-per-query.
 
-- object.remove / object.filter — drop or keep selected keys
-- array.slice — with OPA semantics for non-positive indices
-- trim_prefix / trim_suffix
-- numbers.range_step — with an explicit step and a clear error for step 0
-
-Builtin count goes from 46 to 52.
+Errors stay uncached, so cyclic definitions still hit the recursion limit;
+`with` builds a child environment with fresh maps, so an overridden input
+can never pollute the outer cache.
