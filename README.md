@@ -1,255 +1,228 @@
 # regomoon
 
-A Rego policy-language engine for MoonBit: a lexer, parser and evaluator for
-`.rego` modules over JSON documents, with a builtin library and a documented
-error model.
+MoonBit 的 Rego 策略语言引擎：解析并求值 `.rego` 策略文本，对 JSON 文档做判定。
 
-> **Module**: `CYang-dep/regomoon`
-> **Repository**: https://github.com/CYang-dep/regomoon
-> **Version**: 0.1.0
-> **License**: Apache-2.0
-
-```moonbit
-let policy = match @regomoon.Policy::compile(source) {
-  Err(e) => return Err(e)
-  Ok(p) => p
-}
-let bound = match policy.with_input_json("{\"user\":\"alice\",\"action\":\"read\"}") {
-  Err(e) => return Err(e)
-  Ok(p) => p
-}
-let allowed = bound.allow("allow")          // Bool
-let reasons = bound.query("deny")           // set of denial reasons
-```
-
-## 中文项目介绍
-
-`regomoon` 是用 MoonBit 实现的 **Rego 策略语言引擎**。它解析并求值
-`.rego` 模块文本，把策略语言本身完整搬进 MoonBit：词法分析、递归下降语法
-分析、表达式求值、规则语义、内置函数库与结构化错误，全部从零实现，不依赖
-任何宿主运行时。
-
-一句话：**让 MoonBit 应用能直接读懂并执行 OPA/Rego 策略文件。**
-
-### 为什么是「语言引擎」而不是「策略库」
-
-策略是**数据**，不是代码。使用方把 `.rego` 文本（来自配置中心、Git 仓库、
-运维下发的文件）交给 `regomoon`，引擎在运行时解析并求值——不需要重新编译
-应用，也不需要为每条新策略写一个 MoonBit 函数。
-
-### 已实现
-
-- **模型与模块**：`package`、`import`（含 `as` 别名）、`default` 规则；
-- **规则**：完整规则、部分集合规则（`contains`）、部分对象规则（`p[k] := v`）、
-  带参数规则（`is_admin(user)`）；同时接受 Rego v1 的 `if` 写法与旧的
-  `rule { ... }` 写法；
-- **表达式**：`null` / 布尔 / 数字 / 字符串 / 数组 / 集合 / 对象字面量、
-  引用路径（`.field` / `[expr]`）、函数调用、一元负号、算术
-  `+ - * / %`、比较 `== != < <= > >=`、赋值 `:=` `=`、集合运算 `| & -`、
-  成员判断 `in`；
-- **语句**：裸表达式测试、`not`（否定即失败）、`some x, y`、
-  `some x in xs`、`every x in xs { ... }`；
-- **推导式**：数组 `[x | ...]`、集合 `{x | ...}`、对象 `{k: v | ...}`；
-- **内置函数**：46 个，覆盖聚合、算术、字符串、正则、JSON、集合、对象与
-  类型判断（见下表）；
-- **结构化错误**：10 类错误（词法 / 语法 / JSON / 类型 / 未定义 / 参数个数 /
-  除零 / 冲突 / 安全性 / 编译），词法与语法错误带行列号。
-
-### 验证情况
-
-- `wasm`、`wasm-gc`、`js` 三个目标在本机实跑 `moon test`，各 **75/75 通过**；
-- `native` 目标的测试运行由 CI 在 ubuntu-latest 上执行，同样 **75/75 通过**
-  （本机未安装 C 编译器，无法运行 native 测试，只做了 `moon check --target all` 的类型检查）；
-- CI 运行记录：<https://github.com/CYang-dep/regomoon/actions/runs/35490606996>。
-
-## What this is not
-
-- **Not a port of the OPA Go source.** The grammar, evaluator and builtin
-  library were written from the published Rego documentation. No Go code was
-  copied or translated. See `THIRD_PARTY_NOTICES.md`.
-- **Not a policy *library* in the "write policies as MoonBit functions" sense.**
-  Policies are Rego text, not compiled code.
-- **Not a control plane.** There is no server, no HTTP API, no Kubernetes
-  admission webhook, and no Ceph/S3 integration. It is a library you embed.
-
-## Quick start
+| 项 | 内容 |
+| --- | --- |
+| 模块名 | `CYang-dep/regomoon` |
+| 上游 | Open Policy Agent（OPA）的 Rego 语言，对标 v1.20.2 |
+| 许可证 | Apache-2.0（与上游一致） |
+| 运行时依赖 | 仅 `moonbitlang/regexp@0.3.5` |
+| 仓库 | https://github.com/CYang-dep/regomoon |
 
 ```sh
 moon add CYang-dep/regomoon
 ```
 
-```moonbit
-///|
-const SOURCE : String =
-  #|package authz
-  #|
-  #|default allow := false
-  #|
-  #|allow if {
-  #|  input.action == "read"
-  #|  input.object == "data1"
-  #|}
+本项目移植的是 **Rego 这门语言**，不是 OPA 的 Go 源码。词法器、解析器、求值器和内置函数
+库依据 Rego 官方语言文档的语义从零实现，代码与 OPA 仓库没有派生关系，仅在语言行为上对齐。
 
-///|
-fn main {
-  let policy = match @regomoon.Policy::compile(SOURCE) {
-    Err(e) => {
-      println("compile failed: " + e.render())
-      return
-    }
-    Ok(p) => p
-  }
-  let bound = match policy.with_input_json("{\"action\":\"read\",\"object\":\"data1\"}") {
-    Err(e) => {
-      println("bad input: " + e.render())
-      return
-    }
-    Ok(p) => p
-  }
-  println(bound.allow("allow").to_string())   // true
+## 为什么需要它
+
+策略和业务代码混在一起，是后端开发里反复出现的麻烦。鉴权逻辑散落在各个 handler 里，
+`if user.role == "admin"` 这类判断写了十几处；要新增一种角色，得改代码、重新编译、重新发版；
+运维想在出口处统一拦一道，只能再写一个中间件。Rego 的思路是把"谁能在什么条件下对什么做
+什么"抽成独立的策略文件——策略是数据，改策略不用改程序。
+
+这套做法在 Go 生态里已经很成熟，但要用它，前提是宿主环境里有一个能读懂 `.rego` 文本的
+求值器。MoonBit 目前没有，所以 MoonBit 应用想用声明式策略，只能用代码把规则硬编码一遍。
+
+regomoon 补的就是这一块：给定一段 Rego 文本和一个 JSON 输入，返回判定结果。它是纯库，
+没有服务器、没有网络依赖、不绑定具体业务。Web 框架的鉴权中间件、网关的过滤规则、CI 里的
+配置检查、边缘函数里的轻量判定，都可以直接嵌。
+
+## 核心模块
+
+```
+value.mbt    值模型：null/bool/number/string/array/set/object
+json.mbt     严格 RFC 8259 JSON 读取，供 data 与 input 使用
+error.mbt    结构化错误类型
+lexer.mbt    词法分析，输出带行列号的 token
+ast.mbt      语法树及其回显
+parser.mbt   递归下降 + 优先级爬升
+builtins.mbt 内置函数库
+eval.mbt     规则体求值、规则语义、推导式、运算符
+engine.mbt   对外 API
+```
+
+数据流是一条线：策略文本经 `lexer` 变成 token 流，`parser` 生成语法树，`engine` 把语法树
+连同 `data` / `input` 两份 JSON 文档交给 `eval` 求值，算出的值仍是 `value` 里的 Rego 值，
+可以原样序列化回 JSON。
+
+三处设计与上游实现思路不同，都是因为宿主语言不同：
+
+- **值模型用代数数据类型。** Rego 的值比 JSON 多一个集合类型，这里用 `enum` 表达七种值，
+  并保证集合与对象始终处于排序去重的规范形态，于是相等判断、排序和输出都是确定性的。
+- **规则体求值用回溯搜索。** Rego 的规则体是合取式，`some x in xs` 会引入多条可行绑定，
+  所以求值一个规则体得到的是"所有满足约束的变量环境"的集合，而不是单个布尔值。
+- **错误用统一的 `RegoError` 结构。** 十类错误（词法、语法、JSON、类型、未定义、参数个数、
+  除零、冲突、安全性、编译），词法与语法错误带行列号，调用方按类别处理而不是解析错误字符串。
+
+依赖只有一个 `moonbitlang/regexp`（Apache-2.0），用于 `regex.match`，其余全部基于 MoonBit
+标准库，因此 `wasm`、`wasm-gc`、`js`、`native` 四个后端都能编译。
+
+## 三个可运行的示例
+
+都在 `examples/` 下，可直接 `moon run` 运行，下列输出均为实际运行结果。
+
+### 示例一：接口鉴权（`examples/quickstart`）
+
+Web 框架作者想在中间件里做一次"这个请求放不放行"的判断，策略放在配置里。
+
+```rego
+package authz
+
+default allow := false
+
+allow if {
+  input.action == "read"
+  input.object == "data1"
 }
 ```
 
-Two runnable examples live under `examples/`:
-
-```sh
-moon run examples/quickstart   # a single ACL rule
-moon run examples/rbac         # roles from data, a helper rule, deny reasons
-moon run examples/audit        # comprehensions, regex, set algebra, a per-subject report
+```moonbit
+let policy = @regomoon.Policy::compile(SOURCE)
+let bound = policy.with_input_json("{\"action\":\"read\",\"object\":\"data1\"}")
+bound.allow("allow")   // true
 ```
 
-## API
+`action` 换成 `write` 则返回 `false`（走 `default` 规则）。放行条件写在策略文本里，
+改规则不用改代码、不用重新编译。
 
-| Function | Purpose |
-| --- | --- |
-| `Policy::compile(source)` | Parse and compile Rego text. |
-| `Policy::with_data(value)` / `with_data_json(text)` | Bind the `data` document. |
-| `Policy::with_input(value)` / `with_input_json(text)` | Bind the `input` document. |
-| `Policy::eval(name)` | Evaluate a rule; `None` when it is undefined. |
-| `Policy::allow(name)` | Evaluate a boolean rule, treating undefined as `false`. |
-| `Policy::query(text)` | Evaluate an arbitrary expression such as `data.authz.allow`. |
-| `Policy::package_value()` | Every defined rule in the module, as one object. |
-| `Policy::rule_names()` | The names of all value-producing rules. |
-| `Policy::package_path()` / `package_name()` | The module's `package` path. |
-| `evaluate(source, query, input)` | One-shot convenience helper. |
+### 示例二：数据驱动角色（`examples/rbac`）
 
-`undefined` is deliberately distinct from `false`: a rule with no matching
-clause produces `None`, and `Policy::allow` is the one place that collapses the
-two. Rego makes this distinction and so does this engine.
+多租户系统里角色和权限存在数据库里，希望授权逻辑只依赖数据、不依赖代码。
 
-## Language surface
-
-| Feature | Status |
-| --- | --- |
-| `package`, `import ... as ...` | Supported |
-| `default` rules | Supported |
-| Complete rules (`allow if { }`, `allow := v if { }`) | Supported |
-| Partial set rules (`deny contains msg if { }`) | Supported |
-| Partial object rules (`counts[k] := v if { }`) | Supported |
-| Parameterised (function) rules | Supported |
-| Pre-v1 spellings (`allow { }`, `p[x] { }`) | Supported |
-| Array / set / object comprehensions | Supported |
-| `some x in xs`, `some k, v in obj` | Supported |
-| `every x in xs { }` | Supported |
-| `not` (negation as failure) | Supported |
-| Set algebra (union `\|`, intersection `&`, difference `-`) | Supported |
-| `in` membership, including binding form | Supported |
-| `regex.match`, `regex.is_valid` | Supported |
-| `future.keywords` / `rego.v1` imports | Parsed and ignored — keywords are always enabled |
-
-### Deliberate limits
-
-| Not supported | Why, and what to write instead |
-| --- | --- |
-| The `with` modifier | Rejected with a `compile` error rather than a confusing parse error. Override `input` at the call site instead. |
-| Implicit iteration over unbound index variables | `p[x] if { data.arr[x] == 1 }` is an error. Write `some x in data.arr` explicitly. This is the one place the engine is deliberately stricter than OPA; explicit iteration is also what Rego v1 pushes towards. |
-| Non-string object keys | Objects are the JSON document model, so keys are strings. `{1: "a"}` is a type error. |
-| Arbitrary-precision numbers | Numbers are `Double`. Values beyond 2^53 lose precision. |
-| Host-dependent builtins | `http.send`, `opa.runtime`, `trace`, `time.now_ns` and friends need a host and are absent. `walk` is not implemented. |
-| Dotted rule-head names | `a.b := 1` is not accepted; declare `b` in `package a` instead. |
-
-## Builtins
-
-| Group | Functions |
-| --- | --- |
-| Aggregation | `count` `sum` `product` `max` `min` `sort` `all` `any` |
-| Arithmetic | `abs` `round` `ceil` `floor` |
-| Strings | `lower` `upper` `trim_space` `trim` `startswith` `endswith` `contains` `split` `concat` `replace` `substring` `indexof` `sprintf` |
-| Types | `is_number` `is_string` `is_boolean` `is_array` `is_object` `is_set` `is_null` `type_name` `to_number` |
-| Sets | `set` `union` `intersection` |
-| Arrays / objects | `array.concat` `object.get` `object.keys` `object.union` |
-| JSON | `json.marshal` `json.unmarshal` |
-| Regex | `regex.match` `regex.is_valid` |
-| Numbers | `numbers.range` |
-
-Every builtin checks its argument count and argument types, and reports a
-structured error rather than aborting.
-
-## Errors
-
-All failures are a `RegoError` with a `kind`, a message, and — for lexer and
-parser errors — a source position:
-
-| Kind | Raised when |
-| --- | --- |
-| `lex` | An invalid character, unterminated string, malformed number. |
-| `parse` | An unexpected token, a missing `package`, a malformed rule head. |
-| `json` | A malformed `data` or `input` document. |
-| `type` | A builtin or operator received the wrong value type. |
-| `undefined` | A variable was assigned an undefined value. |
-| `arity` | A builtin was called with the wrong number of arguments. |
-| `divide-by-zero` | `/` or `%` with a zero divisor. |
-| `conflict` | A complete rule or partial object rule produced disagreeing values. |
-| `safety` | The rule-reference recursion limit was exceeded. |
-| `compile` | A construct this engine does not implement, such as `with`. |
-
-## How this differs from neighbouring MoonBit work
-
-Two existing MoonBit projects sit near this one. Neither implements the Rego
-language, and this section states the difference explicitly so the boundary is
-not left to guesswork.
-
-| Project | What it is | How `regomoon` differs |
-| --- | --- | --- |
-| [`chnlkw/kunloria`](https://github.com/chnlkw/kunloria) — "an OPA/Rego alternative written in MoonBit" | A **combinator library plus a native service**: a policy is a MoonBit function `pub type Policy = (Query) -> Decision` assembled from combinators such as `otherwise`, `and_` and `scoped`. It ships a Kubernetes admission webhook and Ceph RGW authorization server, depends on `moonbitlang/async` and `moonbitlang/moonback`, and targets `native` only. | `regomoon` **implements the Rego language**: it lexes, parses and evaluates `.rego` **text** at run time, so policies are data rather than compiled code. It has no server, no Kubernetes or Ceph coupling, and no `async` dependency; it compiles for `wasm`, `wasm-gc`, `js` and `native`. The two projects share a goal (policy decisions) and no implementation path. |
-| [`haol-05/moondatalog`](https://github.com/haol-05/moondatalog) | A pure MoonBit **Datalog query engine** (stratified negation, aggregation, static checks). | Rego descends from Datalog, so this is the closest theoretical neighbour — but a Datalog engine is not a policy language. `regomoon` evaluates the Rego language against the **JSON document model** (objects, sets, and reference paths like `data.roles[user]`), implements Rego's rule forms (complete / partial set / partial object / function rules, `default`, rule-head values), Rego's own operator and statement surface, and the Rego builtin library. It is not a general Datalog solver. |
-
-Neither project occupies "a Rego language implementation in MoonBit", which is
-what this repository provides.
-
-## Layout
-
-```
-regomoon/
-  value.mbt      the Rego value model: null, bool, number, string, array, set, object
-  json.mbt       strict RFC 8259 JSON reader feeding the same value model
-  error.mbt      the structured error type
-  lexer.mbt      tokens, comments, raw strings, positions
-  ast.mbt        the syntax tree and its renderer
-  parser.mbt     recursive descent + precedence climbing
-  builtins.mbt   the builtin function library
-  eval.mbt       search, rule semantics, comprehensions, operators
-  engine.mbt     the public API
-  examples/      quickstart and rbac runnable examples
+```json
+{"roles": {"alice": ["admin"], "bob": ["viewer"]},
+ "grants": {"admin": [{"action": "read", "resource": "data1"},
+                      {"action": "write", "resource": "data1"}]}}
 ```
 
-About 5,100 lines of engine code and 1,100 lines of tests, with 75 tests. There is also a Chinese project write-up in `申报书.md`.
+```moonbit
+bound.query("roles_for(\"alice\")")                      // ["admin"]
+bound.query("granted(\"admin\", \"write\", \"data1\")")   // true
+bound.allow("allow")                                     // 按请求判定
+```
 
-## Build and test
+实际运行输出：
+
+```
+ALLOW  {"user":"alice","authenticated":true,"action":"write","resource":"data1"}   deny=set()
+DENY   {"user":"carol","authenticated":true,"action":"read","resource":"data1"}    deny={"user has no roles"}
+ALLOW  {"user":"alice","authenticated":false,"action":"read","resource":"data1"}   deny={"request is not authenticated"}
+```
+
+角色与权限全在 `data` 文档里，加一个角色只改数据。`deny` 是部分集合规则，多个原因会自动
+累积成一个集合，适合直接返回给前端。
+
+### 示例三：配置审计（`examples/audit`）
+
+平台方要批量检查一批服务账号的权限是否符合规范，并输出每个账号的问题数。
+
+```json
+{"accounts": [
+  {"name": "ci-bot",     "permissions": ["read", "list"]},
+  {"name": "deploy-bot", "permissions": ["read", "secret:rotate"]},
+  {"name": "legacy-job", "permissions": ["read", "write", "delete"]}]}
+```
+
+```moonbit
+bound.query("violations")   // 所有越权项
+bound.query("report")       // 每个账号的越权计数
+bound.allow("compliant")
+```
+
+实际运行输出：
+
+```
+compliant      = false
+violations     = {{"account": "deploy-bot", "permission": "secret:rotate"},
+                  {"account": "legacy-job", "permission": "delete"},
+                  {"account": "legacy-job", "permission": "write"}}
+needs_approval = {"deploy-bot"}
+report         = {"ci-bot": 0, "deploy-bot": 1, "legacy-job": 2}
+```
+
+一个策略文件同时给出明细和汇总。这里用到了推导式捕获外层绑定、`not ... in ...`、
+正则匹配和部分对象规则，是三个示例里语言特性最全的一个。
+
+## 与 OPA 的能力对照
+
+| 能力 | OPA / Rego | 本项目 | 说明 |
+|---|---|---|---|
+| 模块结构 `package` / `import as` / `default` | 支持 | 已实现 | 同时兼容 v1 的 `if`/`contains` 与旧版 `rule { }` 写法 |
+| 完整 / 部分集合 / 部分对象规则 | 支持 | 已实现 | |
+| 带参规则（函数规则） | 支持 | 已实现 | |
+| 数组 / 集合 / 对象推导式 | 支持 | 已实现 | 推导式捕获外层绑定 |
+| `some` / `every` / `not` | 支持 | 已实现 | |
+| 集合代数 `\|` `&` `-` 与 `in` | 支持 | 已实现 | |
+| 内置函数 | 全量（含时间、加密、HTTP、图遍历等） | 46 个 | 聚合、算术、字符串、正则、JSON、集合、对象、类型判断 |
+| 正则 | Go `regexp` 语法 | 已实现 | 改用 `moonbitlang/regexp`，语法子集 |
+| 数字 | 任意精度十进制 | `Double` | 超过 2^53 丢精度 |
+| `with` 修饰符 | 支持 | 未实现 | 显式报编译错误；可在调用处覆盖 `input` |
+| 隐式迭代 | 支持 | 未实现 | 需显式写 `some x in xs` |
+| 非字符串对象键 | 支持 | 未实现 | 对象键限定为字符串 |
+| `walk`、`http.send`、`opa.runtime` 等宿主内置 | 支持 | 未实现 | 需要宿主能力 |
+| 部分求值等编译期优化 | 支持 | 未实现 | |
+
+## 实测数据
+
+- **代码量**：引擎 9 个文件共 5,120 行（剔除空行与注释后 4,424 行），不含测试、示例与生成
+  文件；测试 6 个文件 1,120 行；示例 3 个共 283 行。
+- **测试**：`moon test --target wasm` / `wasm-gc` / `js` / `native` 四个后端各
+  **75 通过 / 0 失败**。前三个在本机验证，`native` 由 CI 在 ubuntu-latest 上执行
+  （本机未装 C 编译器，无法运行 native 测试）。
+  CI 运行记录：<https://github.com/CYang-dep/regomoon/actions/runs/35490606996>
+- **严格检查**：`moon check --target all --deny-warn` 在四个后端全部通过（零警告）。
+  工具链 moon 0.1.20260713 / moonc v0.10.4+2cc641edf（本地），CI 使用最新版。
+- **覆盖率**：待验证。尚未跑 `moon coverage`。
+- **性能**：待验证。没有与 OPA 或其它实现的对比数据，不做性能方面的结论。
+- **上游对照测试**：未系统性移植 OPA 官方测试集。现有 75 个用例为手工编写，语义对照官方
+  文档与常见策略写法，其中 ACL、RBAC、配置审计三类按真实策略形态组织。
+
+## 当前状态与计划
+
+已完成：语言核心（词法、语法、求值）、46 个内置函数、公共 API、三个可运行示例、CI。
+
+尚未完成：`with` 修饰符、隐式迭代、任意精度数字、剩余内置函数（时间、编码、图遍历等
+类别）、OPA 官方测试集的系统性移植、覆盖率与性能数据。
+
+后续按优先级：
+
+1. 移植 OPA 官方测试用例中与已实现语言面对应的部分，把"语义对齐"从人工对照变成可执行断言；
+2. 支持 `with` 修饰符的 `input` / `data` 覆盖；
+3. 补齐字符串与编解码类内置函数；
+4. 用 `moon coverage` 取得覆盖率数据，并做一次与 OPA 的同输入耗时对比；
+5. 视需求决定是否发布到 mooncakes.io。
+
+## 构建
 
 ```sh
 moon check --target all --deny-warn
 moon test  --target all --deny-warn
-moon fmt   --check
+moon run examples/quickstart
+moon run examples/rbac
+moon run examples/audit
 ```
 
-## References
+## API 一览
 
-- [Open Policy Agent](https://github.com/open-policy-agent/opa) — the Rego
-  language and its official test cases, used as the semantic reference.
-- [`moonbitlang/regexp`](https://mooncakes.io/docs/#/moonbitlang/regexp) — the
-  regular-expression engine behind `regex.match`.
+| 函数 | 用途 |
+| --- | --- |
+| `Policy::compile(source)` | 解析并编译 Rego 文本 |
+| `Policy::with_data(value)` / `with_data_json(text)` | 绑定 `data` 文档 |
+| `Policy::with_input(value)` / `with_input_json(text)` | 绑定 `input` 文档 |
+| `Policy::eval(name)` | 求值一条规则；未定义时返回 `None` |
+| `Policy::allow(name)` | 求值布尔规则，未定义按 `false` 处理 |
+| `Policy::query(text)` | 求值任意表达式，如 `data.authz.allow` |
+| `Policy::package_value()` | 模块内所有已定义规则合成一个对象 |
+| `Policy::rule_names()` | 所有产出值的规则名 |
+| `evaluate(source, query, input)` | 一次性便捷入口 |
 
-## License
+`undefined` 与 `false` 是两回事：没有子句命中的规则返回 `None`，只有 `Policy::allow`
+会把两者合并。这是 Rego 的语义，本引擎保持一致。
 
-Apache-2.0. See `LICENSE` and `THIRD_PARTY_NOTICES.md`.
+## 许可证
+
+Apache-2.0。见 `LICENSE` 与 `THIRD_PARTY_NOTICES.md`。
