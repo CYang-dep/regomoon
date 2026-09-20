@@ -99,6 +99,56 @@ pub fn parse_module(text : String) -> Result[Module, RegoError] {
 }
 
 ///|
+
+///|
+/// Parse a top-level query, optionally carrying a `with input as ...` modifier.
+pub fn parse_query(text : String) -> Result[Query, RegoError] {
+  match tokenize(text) {
+    Err(e) => Err(e)
+    Ok(tokens) => {
+      let parser : Parser = { tokens, pos: 0 }
+      parser.parse_query()
+    }
+  }
+}
+
+///|
+/// The method body of [parse_query].
+fn Parser::parse_query(self : Parser) -> Result[Query, RegoError] {
+  let expr = match self.parse_expr(0) {
+    Err(e) => return Err(e)
+    Ok(v) => v
+  }
+  if !self.at_ident("with") {
+    if !self.at(Punct::Eof) {
+      return Err(self.err("unexpected trailing content after expression"))
+    }
+    return Ok(Query::Plain(expr))
+  }
+  let mods = match self.parse_with_mods() {
+    Err(e) => return Err(e)
+    Ok(m) => m
+  }
+  if mods.length() != 1 {
+    return Err(self.compile_error("chained `with` modifiers are not supported"))
+  }
+  let only = mods[0]
+  if only.0.length() != 1 || only.0[0] != "input" {
+    return Err(
+      self.compile_error(
+        "only `with input as ...` is supported, not `with " +
+        render_path(only.0) +
+        " as ...`",
+      ),
+    )
+  }
+  if !self.at(Punct::Eof) {
+    return Err(self.err("unexpected trailing content after expression"))
+  }
+  Ok(Query::WithInput(expr, only.1))
+}
+
+///|
 /// Parse a standalone expression, useful for testing and for `input`-only use.
 pub fn parse_expression(text : String) -> Result[Expr, RegoError] {
   match tokenize(text) {
@@ -502,13 +552,89 @@ fn Parser::parse_stmt(self : Parser) -> Result[Stmt, RegoError] {
       Err(e) => return Err(e)
       Ok(v) => v
     }
-    return self.finish_stmt(Stmt::Negate(inner))
+    return self.finish_expr_stmt(inner, true)
   }
   let expr = match self.parse_expr(0) {
     Err(e) => return Err(e)
     Ok(v) => v
   }
-  self.finish_stmt(Stmt::Test(expr))
+  self.finish_expr_stmt(expr, false)
+}
+
+///|
+/// Assemble a statement from a parsed expression, attaching `with` modifiers.
+///
+/// Only the `input` document can be replaced, and a statement may carry at most
+/// one modifier. `with data.x as ...` and chained modifiers are compile errors
+/// rather than silent misbehaviour.
+fn Parser::finish_expr_stmt(
+  self : Parser,
+  expr : Expr,
+  negate : Bool,
+) -> Result[Stmt, RegoError] {
+  if !self.at_ident("with") {
+    return Ok(if negate { Stmt::Negate(expr) } else { Stmt::Test(expr) })
+  }
+  let mods = match self.parse_with_mods() {
+    Err(e) => return Err(e)
+    Ok(m) => m
+  }
+  if mods.length() != 1 {
+    return Err(self.compile_error("chained `with` modifiers are not supported"))
+  }
+  let only = mods[0]
+  if only.0.length() != 1 || only.0[0] != "input" {
+    return Err(
+      self.compile_error(
+        "only `with input as ...` is supported, not `with " +
+        render_path(only.0) +
+        " as ...`",
+      ),
+    )
+  }
+  Ok(
+    if negate {
+      Stmt::NegateWithInput(expr, only.1)
+    } else {
+      Stmt::WithInput(expr, only.1)
+    },
+  )
+}
+
+///|
+/// Parse one or more `with <path> as <expr>` modifiers.
+fn Parser::parse_with_mods(
+  self : Parser,
+) -> Result[Array[(Array[String], Expr)], RegoError] {
+  let mods : Array[(Array[String], Expr)] = []
+  while self.at_ident("with") {
+    self.advance()
+    let path = match self.parse_path() {
+      Err(e) => return Err(e)
+      Ok(p) => p
+    }
+    if !self.at_ident("as") {
+      return Err(self.err("expected `as` after the `with` target"))
+    }
+    self.advance()
+    let value = match self.parse_expr(0) {
+      Err(e) => return Err(e)
+      Ok(v) => v
+    }
+    mods.push((path, value))
+  }
+  Ok(mods)
+}
+
+///|
+/// A compile error located at the current token.
+fn Parser::compile_error(self : Parser, message : String) -> RegoError {
+  RegoError::at(
+    RegoErrorKind::CompileError,
+    message,
+    self.cur().line,
+    self.cur().column,
+  )
 }
 
 ///|
@@ -519,7 +645,7 @@ fn Parser::finish_stmt(self : Parser, stmt : Stmt) -> Result[Stmt, RegoError] {
     return Err(
       RegoError::at(
         RegoErrorKind::CompileError,
-        "the `with` modifier is not supported by this engine",
+        "`with` after `some` or `every` is not supported",
         self.cur().line,
         self.cur().column,
       ),

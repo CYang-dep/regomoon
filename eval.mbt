@@ -1095,7 +1095,59 @@ fn eval_body(
       }
       eval_body(env, depth, stmts, start + 1, scope)
     }
+    Stmt::WithInput(expr, replacement) =>
+      eval_with(env, depth, stmts, start, scope, expr, replacement, false)
+    Stmt::NegateWithInput(expr, replacement) =>
+      eval_with(env, depth, stmts, start, scope, expr, replacement, true)
     Stmt::Test(expr) => eval_test(env, depth, stmts, start, scope, expr)
+  }
+}
+
+///|
+/// Evaluate `<expr> with input as <replacement>`.
+///
+/// The replacement document is evaluated in the enclosing scope, then `expr`
+/// runs against a child environment whose `input` is that document. Bindings
+/// made inside do not leak out, matching Rego.
+fn eval_with(
+  env : Env,
+  depth : Int,
+  stmts : Array[Stmt],
+  start : Int,
+  scope : Scope,
+  expr : Expr,
+  replacement : Expr,
+  negate : Bool,
+) -> Result[Array[Scope], RegoError] {
+  let v = match eval_expr(env, scope, depth, replacement) {
+    Err(err) => return Err(err)
+    Ok(v) => v
+  }
+  let child : Env = match v {
+    // overriding with an undefined document leaves the statement unsatisfied
+    None => return Ok([])
+    Some(x) => { md: env.md, data: env.data, input: x }
+  }
+  let inner = match eval_expr(child, scope, depth, expr) {
+    Err(err) => return Err(err)
+    Ok(v) => v
+  }
+  let ok = match inner {
+    Some(Value::Bool(b)) => if negate { !b } else { b }
+    Some(other) =>
+      return Err(
+        RegoError::make(
+          RegoErrorKind::TypeError,
+          "`with` requires a boolean expression, got " + other.type_name(),
+        ),
+      )
+    // an undefined expression is unsatisfied, so `not` succeeds
+    None => negate
+  }
+  if ok {
+    eval_body(env, depth, stmts, start + 1, scope)
+  } else {
+    Ok([])
   }
 }
 

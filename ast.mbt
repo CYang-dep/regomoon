@@ -46,6 +46,10 @@ pub(all) enum Stmt {
   SomeIn(Array[String], Expr)
   /// `every x, y in <collection> { ... }` — universal quantification.
   Every(Array[String], Expr, Array[Stmt])
+  /// `<expr> with input as <value>` — evaluate with a replaced input document.
+  WithInput(Expr, Expr)
+  /// `not <expr> with input as <value>`
+  NegateWithInput(Expr, Expr)
 }
 
 ///|
@@ -189,6 +193,10 @@ pub fn Stmt::render(self : Stmt) -> String {
       " { " +
       render_stmts(body) +
       " }"
+    Stmt::WithInput(e, replacement) =>
+      e.render() + " with input as " + replacement.render()
+    Stmt::NegateWithInput(e, replacement) =>
+      "not " + e.render() + " with input as " + replacement.render()
   }
 }
 
@@ -227,4 +235,11 @@ fn render_value(e : Expr?) -> String {
     Some(v) => v.render()
     None => "_"
   }
+}
+
+///|
+/// A top-level query: a plain expression, or one carrying `with input as ...`.
+pub(all) enum Query {
+  Plain(Expr)
+  WithInput(Expr, Expr)
 }

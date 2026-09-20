@@ -411,3 +411,58 @@ test "engine: methods on a rule that returns an object" {
   assert_eq(run(source, "{\"action\":\"read\",\"n\":5}", "allow"), "true")
   assert_eq(run(source, "{\"action\":\"read\",\"n\":50}", "allow"), "undefined")
 }
+
+// ---------------------------------------------------------------------------
+// the `with` modifier
+// ---------------------------------------------------------------------------
+
+///|
+const WITH_POLICY : String =
+  #|package authz
+  #|
+  #|default allow := false
+  #|
+  #|allow if {
+  #|  input.action == "read"
+  #|}
+  #|
+  #|# the classic use: exercise one rule against several inputs without
+  #|# recompiling the policy
+  #|allows_read if {
+  #|  allow with input as {"action": "read"}
+  #|}
+  #|
+  #|rejects_write if {
+  #|  not allow with input as {"action": "write"}
+  #|}
+  #|
+  #|# bindings made inside a `with` do not leak out
+  #|leaked if {
+  #|  allow with input as {"action": "read"}
+  #|  input.action == "read"
+  #|}
+
+///|
+test "engine: with input as replaces the document for one expression" {
+  // `allow` carries a default, so it is false rather than undefined
+  assert_eq(run(WITH_POLICY, "{}", "allow"), "false")
+  assert_eq(run(WITH_POLICY, "{}", "allows_read"), "true")
+  assert_eq(run(WITH_POLICY, "{}", "rejects_write"), "true")
+}
+
+///|
+test "engine: bindings inside with do not leak out" {
+  assert_eq(run(WITH_POLICY, "{}", "leaked"), "undefined")
+}
+
+///|
+test "engine: with can be queried directly" {
+  assert_eq(
+    run(WITH_POLICY, "{}", "allow with input as {\"action\":\"read\"}"),
+    "true",
+  )
+  assert_eq(
+    run(WITH_POLICY, "{}", "allow with input as {\"action\":\"write\"}"),
+    "false",
+  )
+}

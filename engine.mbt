@@ -143,9 +143,23 @@ pub fn Policy::allow(self : Policy, name : String) -> Result[Bool, RegoError] {
 /// The query is parsed with the same expression grammar as a rule body, so
 /// `data.authz.allow`, `input.user`, or `count(data.items)` all work.
 pub fn Policy::query(self : Policy, text : String) -> Result[Value?, RegoError] {
-  match parse_expression(text) {
+  match parse_query(text) {
     Err(e) => Err(e)
-    Ok(expr) => eval_expr(self.env(), Scope::empty(), 0, expr)
+    Ok(Query::Plain(expr)) => eval_expr(self.env(), Scope::empty(), 0, expr)
+    Ok(Query::WithInput(expr, replacement)) => {
+      let env = self.env()
+      let v = match eval_expr(env, Scope::empty(), 0, replacement) {
+        Err(e) => return Err(e)
+        Ok(v) => v
+      }
+      match v {
+        None => Ok(None)
+        Some(new_input) => {
+          let child : Env = { md: env.md, data: env.data, input: new_input }
+          eval_expr(child, Scope::empty(), 0, expr)
+        }
+      }
+    }
   }
 }
 

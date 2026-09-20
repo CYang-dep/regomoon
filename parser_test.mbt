@@ -190,12 +190,32 @@ test "parser: real-world shaped policy" {
 test "parser: errors" {
   // a module must declare a package
   assert_true(show_module("allow if { true }").has_prefix("ERR:["))
-  // unsupported statement modifier gets a compile error, not a parse error
-  match parse_module("package a\nallow if { true with input as {} }") {
+  // `with` is supported for the input document
+  assert_eq(
+    show_module("package a\nallow if { true with input as {\"a\": 1} }"),
+    "package a | allow if { true with input as {\"a\": 1} }",
+  )
+  assert_eq(
+    show_module("package a\nallow if { not p with input as {} }"),
+    "package a | allow if { not p with input as {} }",
+  )
+  // overriding something other than input is a compile error
+  match parse_module("package a\nallow if { true with data.x as 1 }") {
     Ok(_) => assert_true(false)
     Err(e) => {
       assert_eq(e.kind.label(), "compile")
-      assert_true(e.message.contains("with"))
+      assert_true(e.message.contains("only `with input as ...`"))
+    }
+  }
+  // chained modifiers are a compile error
+  match
+    parse_module(
+      "package a\nallow if { true with input as {} with input as {} }",
+    ) {
+    Ok(_) => assert_true(false)
+    Err(e) => {
+      assert_eq(e.kind.label(), "compile")
+      assert_true(e.message.contains("chained"))
     }
   }
   // structural errors carry positions
