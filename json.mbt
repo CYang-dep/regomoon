@@ -240,7 +240,7 @@ fn JsonReader::parse_hex4(self : JsonReader) -> Result[Int, RegoError] {
 /// Parse a string body, assuming the reader is positioned on the opening `"`.
 fn JsonReader::parse_string_raw(self : JsonReader) -> Result[String, RegoError] {
   self.advance()
-  let sb = StringBuilder::new()
+  let sb = StringBuilder()
   while true {
     match self.peek_code() {
       None => return Err(self.err("unterminated string"))

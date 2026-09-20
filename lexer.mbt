@@ -87,7 +87,7 @@ pub fn TokenKind::describe(self : TokenKind) -> String {
 ///|
 /// Join strings with a separator.
 pub fn join_strings(parts : Array[String], sep : String) -> String {
-  let sb = StringBuilder::new()
+  let sb = StringBuilder()
   let mut i = 0
   for p in parts {
     if i > 0 {
@@ -341,7 +341,7 @@ fn Lexer::consume_digits(self : Lexer) -> Int {
 
 ///|
 fn Lexer::read_ident(self : Lexer) -> String {
-  let sb = StringBuilder::new()
+  let sb = StringBuilder()
   let mut going = true
   while going {
     match self.peek_code() {
@@ -397,7 +397,7 @@ fn Lexer::read_number(self : Lexer) -> Result[Double, RegoError] {
 ///|
 fn Lexer::read_string(self : Lexer) -> Result[String, RegoError] {
   self.advance()
-  let sb = StringBuilder::new()
+  let sb = StringBuilder()
   while true {
     match self.peek_code() {
       None => return Err(self.err("unterminated string literal"))
@@ -454,7 +454,7 @@ fn Lexer::read_string(self : Lexer) -> Result[String, RegoError] {
 /// A backtick-delimited raw string: no escapes, newlines allowed.
 fn Lexer::read_raw_string(self : Lexer) -> Result[String, RegoError] {
   self.advance()
-  let sb = StringBuilder::new()
+  let sb = StringBuilder()
   while true {
     match self.peek_code() {
       None => return Err(self.err("unterminated raw string literal"))

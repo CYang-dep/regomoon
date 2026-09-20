@@ -377,7 +377,7 @@ fn hex4(n : Int) -> String {
 ///|
 /// Render a value as Rego source (strings quoted, sets as `{...}`).
 pub fn Value::to_rego_string(self : Value) -> String {
-  let sb = StringBuilder::new()
+  let sb = StringBuilder()
   write_rego(sb, self)
   sb.to_string()
 }
@@ -442,7 +442,7 @@ fn write_rego(sb : StringBuilder, v : Value) -> Unit {
 /// Render a value as JSON. Sets are emitted as arrays, matching OPA's
 /// `json.marshal` behaviour for set-valued results.
 pub fn Value::to_json_string(self : Value) -> String {
-  let sb = StringBuilder::new()
+  let sb = StringBuilder()
   write_json(sb, self)
   sb.to_string()
 }

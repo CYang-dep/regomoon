@@ -794,7 +794,7 @@ fn replace_all(s : String, old : String, replacement : String) -> String {
     }
     return join_strings(parts, "")
   }
-  let sb = StringBuilder::new()
+  let sb = StringBuilder()
   let src = chars_of(s)
   let needle = chars_of(old)
   let mut i = 0
@@ -835,7 +835,7 @@ fn compile_regex(pattern : String) -> @regexp.Regexp? {
 /// precision are honoured for `%f`; other flags are accepted and ignored.
 fn sprintf(fmt : String, args : Array[Value]) -> String {
   let src = chars_of(fmt)
-  let sb = StringBuilder::new()
+  let sb = StringBuilder()
   let mut i = 0
   let mut next_arg = 0
   while i < src.length() {
@@ -938,7 +938,7 @@ fn format_fixed(d : Double, precision : Int) -> String {
   let whole = (scaled / scale).to_int()
   let frac = (scaled - whole.to_double() * scale).to_int()
   let frac_text = frac.to_string()
-  let padding = StringBuilder::new()
+  let padding = StringBuilder()
   let mut pad = precision - frac_text.length()
   while pad > 0 {
     padding.write_string("0")
