@@ -1,0 +1,5 @@
+import {
+  "CYang-dep/regomoon" @regomoon,
+}
+
+pkgtype(kind: "executable")

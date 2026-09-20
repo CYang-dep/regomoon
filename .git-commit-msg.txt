@@ -1,9 +1,14 @@
-perf: memoise argless rule evaluation within a query
+bench: add a diamond-chain throughput benchmark
 
-Rules are pure: they read only the module, data and input. A result computed
-once is therefore valid for every reference inside the same query, which
-turns a diamond-shaped rule graph from once-per-path into once-per-query.
+Each rule in the chain references its predecessor twice, so the top rule
+touches the base rule 2^depth times without memoisation and only depth
+times with it. The program prints a checksum so the work cannot be
+optimised away; wall time is measured from outside with `time`.
 
-Errors stay uncached, so cyclic definitions still hit the recursion limit;
-`with` builds a child environment with fresh maps, so an overridden input
-can never pollute the outer cache.
+Measured on this machine (500 queries, depth 12, checksum 2048000 in
+both runs):
+
+- with the rule cache:    ~128 ms
+- with the cache bypassed: ~833 ms
+
+about 6.5x, purely from memoisation.
