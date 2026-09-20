@@ -1,0 +1,26 @@
+# MoonBit build artifacts
+_build/
+pkg.generated.mbti
+target/
+*.wasm
+*.wasm.map
+
+# MoonBit dependency cache
+.mooncakes/
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+
+# Local environment files
+.env
+.env.*
+*.local
+
+# Local agent and skill files, never part of the project
+AGENTS.md
+CLAUDE.md
+SKILL.md
+.agents/
+.claude/
+.cursor/
