@@ -1,9 +1,0 @@
-test: add a language-conformance suite modelled on OPA cases
-
-40 cases, each a whole policy plus a query and the value the engine must
-return, following the shapes documented by OPA: arithmetic and precedence,
-nested references, set algebra, the aggregation and string builtins, all
-three comprehensions, quantifiers, partial rules, defaults, negation,
-rule-to-rule references, the with modifier, and a JSON round-trip.
-
-Test count goes from 83 to 91.

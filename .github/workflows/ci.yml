@@ -27,5 +27,11 @@ jobs:
         run: moon check --target all --deny-warn
       - name: Strict tests (wasm, wasm-gc, js, native)
         run: moon test --target all --deny-warn
+      - name: Examples
+        run: |
+          moon run examples/quickstart
+          moon run examples/rbac
+          moon run examples/audit
+          moon run examples/bench
       - name: Package manifest
         run: moon package --list
