@@ -18,7 +18,8 @@ const QUERIES : Int = 500
 ///|
 const DEPTH : Int = 12
 
-///| Build the diamond-chain policy source.
+///|
+/// Build the diamond-chain policy source.
 fn policy_source(depth : Int) -> String {
   let sb = StringBuilder::new()
   sb.write_string("package bench\n\nbase := 1\n\n")
@@ -62,5 +63,7 @@ fn main {
     i = i + 1
   }
   println("queries=" + QUERIES.to_string() + " depth=" + DEPTH.to_string())
-  println("checksum=" + checksum.to_string() + " undefined=" + undefined.to_string())
+  println(
+    "checksum=" + checksum.to_string() + " undefined=" + undefined.to_string(),
+  )
 }

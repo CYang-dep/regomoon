@@ -1,14 +1,9 @@
-bench: add a diamond-chain throughput benchmark
+test: add a language-conformance suite modelled on OPA cases
 
-Each rule in the chain references its predecessor twice, so the top rule
-touches the base rule 2^depth times without memoisation and only depth
-times with it. The program prints a checksum so the work cannot be
-optimised away; wall time is measured from outside with `time`.
+40 cases, each a whole policy plus a query and the value the engine must
+return, following the shapes documented by OPA: arithmetic and precedence,
+nested references, set algebra, the aggregation and string builtins, all
+three comprehensions, quantifiers, partial rules, defaults, negation,
+rule-to-rule references, the with modifier, and a JSON round-trip.
 
-Measured on this machine (500 queries, depth 12, checksum 2048000 in
-both runs):
-
-- with the rule cache:    ~128 ms
-- with the cache bypassed: ~833 ms
-
-about 6.5x, purely from memoisation.
+Test count goes from 83 to 91.

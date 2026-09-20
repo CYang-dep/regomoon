@@ -1,5 +1,5 @@
 import {
-  "CYang-dep/regomoon" @regomoon,
+  "CYang-dep/regomoon",
 }
 
 pkgtype(kind: "executable")
