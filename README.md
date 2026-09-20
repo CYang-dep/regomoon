@@ -115,6 +115,7 @@ Two runnable examples live under `examples/`:
 ```sh
 moon run examples/quickstart   # a single ACL rule
 moon run examples/rbac         # roles from data, a helper rule, deny reasons
+moon run examples/audit        # comprehensions, regex, set algebra, a per-subject report
 ```
 
 ## API
@@ -232,7 +233,7 @@ regomoon/
   examples/      quickstart and rbac runnable examples
 ```
 
-About 5,100 lines of engine code and 1,100 lines of tests, with 75 tests.
+About 5,100 lines of engine code and 1,100 lines of tests, with 75 tests. There is also a Chinese project write-up in `申报书.md`.
 
 ## Build and test
 

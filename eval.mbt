@@ -324,7 +324,7 @@ fn eval_expr(
       }
     }
     Expr::EArrayComprehension(head, body) => {
-      let scopes = match eval_body(env, depth, body, 0, Scope::empty()) {
+      let scopes = match eval_body(env, depth, body, 0, scope) {
         Err(err) => return Err(err)
         Ok(s) => s
       }
@@ -339,7 +339,7 @@ fn eval_expr(
       Ok(Some(Value::Array(out)))
     }
     Expr::ESetComprehension(head, body) => {
-      let scopes = match eval_body(env, depth, body, 0, Scope::empty()) {
+      let scopes = match eval_body(env, depth, body, 0, scope) {
         Err(err) => return Err(err)
         Ok(s) => s
       }
@@ -354,7 +354,7 @@ fn eval_expr(
       Ok(Some(make_set(out)))
     }
     Expr::EObjectComprehension(key, value, body) => {
-      let scopes = match eval_body(env, depth, body, 0, Scope::empty()) {
+      let scopes = match eval_body(env, depth, body, 0, scope) {
         Err(err) => return Err(err)
         Ok(s) => s
       }
