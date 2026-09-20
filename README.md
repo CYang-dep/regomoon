@@ -55,12 +55,12 @@ let reasons = bound.query("deny")           // set of denial reasons
 - **结构化错误**：10 类错误（词法 / 语法 / JSON / 类型 / 未定义 / 参数个数 /
   除零 / 冲突 / 安全性 / 编译），词法与语法错误带行列号。
 
-### 未经本地验证的部分
+### 验证情况
 
-- `wasm`、`wasm-gc`、`js` 三个目标已实跑 `moon test`，各 **75/75 通过**；
-- `native` 目标通过 `moon check --target all --deny-warn` 的类型检查，但本机
-  未安装 C 编译器（`cl` / `cc` / `gcc` / `clang` 均缺失），因此 native 的
-  **测试运行**未在本机执行；CI 在 ubuntu 上会覆盖该目标。
+- `wasm`、`wasm-gc`、`js` 三个目标在本机实跑 `moon test`，各 **75/75 通过**；
+- `native` 目标的测试运行由 CI 在 ubuntu-latest 上执行，同样 **75/75 通过**
+  （本机未安装 C 编译器，无法运行 native 测试，只做了 `moon check --target all` 的类型检查）；
+- CI 运行记录：<https://github.com/CYang-dep/regomoon/actions/runs/35490606996>。
 
 ## What this is not
 
