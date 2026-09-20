@@ -1,6 +1,4 @@
-docs: record measured coverage
+fix: use the non-deprecated StringBuilder constructor in the benchmark
 
-moon coverage reports 2553/3225 lines covered across the nine engine
-sources (about 79%), and 76% counting the four example programs. The
-weakest file is eval.mbt at 484/687 — mostly error branches and rarely
-taken operator paths, which is where future test work should go.
+Missed when the rest of the tree was migrated; the latest toolchain treats
+it as an error under --deny-warn.

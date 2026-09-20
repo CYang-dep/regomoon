@@ -21,7 +21,7 @@ const DEPTH : Int = 12
 ///|
 /// Build the diamond-chain policy source.
 fn policy_source(depth : Int) -> String {
-  let sb = StringBuilder::new()
+  let sb = StringBuilder()
   sb.write_string("package bench\n\nbase := 1\n\n")
   let mut prev = "base"
   let mut i = 0
