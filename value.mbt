@@ -199,6 +199,13 @@ fn sort_values(items : Array[Value]) -> Unit {
   }
 }
 
+///| A copy of `items` sorted by the Rego total order.
+pub fn sorted_values(items : Array[Value]) -> Array[Value] {
+  let out = items.copy()
+  sort_values(out)
+  out
+}
+
 ///| Build a canonical set from arbitrary items: sorted and deduplicated.
 pub fn make_set(items : Array[Value]) -> Value {
   let sorted = items.copy()

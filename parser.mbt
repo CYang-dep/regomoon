@@ -645,7 +645,23 @@ fn Parser::parse_primary(self : Parser) -> Result[Expr, RegoError] {
       if name == "null" {
         return Ok(Expr::ENull)
       }
-      if self.at(Punct::LParen) {
+      // A dotted function name such as `regex.match` or `json.marshal`. Only a
+      // chain immediately followed by `(` is a call; otherwise these are
+      // ordinary reference steps and the postfix loop re-reads them.
+      let after_name = self.pos
+      let segments : Array[String] = [name]
+      let mut chained = true
+      while chained && self.at(Punct::Dot) {
+        self.advance()
+        match self.cur().kind {
+          TokenKind::TokIdent(field) => {
+            segments.push(field)
+            self.advance()
+          }
+          _ => chained = false
+        }
+      }
+      if chained && self.at(Punct::LParen) {
         self.advance()
         let args = match self.parse_expr_list(Punct::RParen) {
           Err(e) => return Err(e)
@@ -655,8 +671,9 @@ fn Parser::parse_primary(self : Parser) -> Result[Expr, RegoError] {
           Err(e) => return Err(e)
           Ok(_) => ()
         }
-        return Ok(Expr::ECall(name, args))
+        return Ok(Expr::ECall(join_strings(segments, "."), args))
       }
+      self.pos = after_name
       Ok(Expr::EVar(name))
     }
     TokenKind::TokLParen => {

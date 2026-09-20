@@ -172,13 +172,13 @@ test "parser: real-world shaped policy" {
   assert_true(shown.contains("allow if {"))
   assert_true(shown.contains("is_member(user)"))
   assert_true(shown.contains("deny contains msg if {"))
-  assert_false(shown.starts_with("ERR"))
+  assert_false(shown.has_prefix("ERR"))
 }
 
 ///|
 test "parser: errors" {
   // a module must declare a package
-  assert_true(show_module("allow if { true }").starts_with("ERR:["))
+  assert_true(show_module("allow if { true }").has_prefix("ERR:["))
   // unsupported statement modifier gets a compile error, not a parse error
   match parse_module("package a\nallow if { true with input as {} }") {
     Ok(_) => assert_true(false)

@@ -53,7 +53,7 @@ pub(all) enum RuleKind {
   PartialSetRule
   /// `counts[k] := v if { ... }`
   PartialObjectRule
-}
+} derive(Eq)
 
 ///| A rule definition.
 pub(all) struct Rule {
